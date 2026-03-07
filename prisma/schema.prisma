@@ -1,0 +1,168 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  legalName String
+  tradeName String?
+  email     String?
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  drivers         Driver[]
+  vehicles        Vehicle[]
+  platforms       Platform[]
+  dailyOperations DailyOperation[]
+  privateTrips    PrivateTrip[]
+}
+
+model Driver {
+  id                   String   @id @default(cuid())
+  companyId            String
+  firstName            String
+  lastName             String
+  fullName             String
+  phone                String?
+  email                String?
+  nationalId           String?
+  drivingLicenseNumber String?
+  licensePoints        Int?
+  hireDate             DateTime?
+  isActive             Boolean  @default(true)
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dailyOperations DailyOperation[]
+  privateTrips    PrivateTrip[]
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  companyId   String
+  plateNumber String   @unique
+  brand       String
+  model       String
+  energyType  String
+  isActive    Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dailyOperations DailyOperation[]
+  privateTrips    PrivateTrip[]
+}
+
+model Platform {
+  id        String   @id @default(cuid())
+  companyId String
+  code      String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dailyPlatformIncomes DailyPlatformIncome[]
+
+  @@unique([companyId, code])
+}
+
+model DailyOperation {
+  id            String   @id @default(cuid())
+  companyId     String
+  driverId      String
+  vehicleId     String
+  operationDate DateTime
+  weekdayLabel  String?
+  shiftType     String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company               Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  driver                Driver                     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle               Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  platformIncomes       DailyPlatformIncome[]
+  privateIncomeSummary  DailyPrivateIncomeSummary?
+  vehicleEnergyLog      VehicleEnergyLog?
+
+  @@unique([companyId, driverId, vehicleId, operationDate])
+}
+
+model DailyPlatformIncome {
+  id               String   @id @default(cuid())
+  dailyOperationId String
+  platformId       String
+  grossAmount      Float
+  tipsAmount       Float    @default(0)
+  cashAmount       Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  dailyOperation DailyOperation @relation(fields: [dailyOperationId], references: [id], onDelete: Cascade)
+  platform       Platform       @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@unique([dailyOperationId, platformId])
+}
+
+model DailyPrivateIncomeSummary {
+  id               String   @id @default(cuid())
+  dailyOperationId String   @unique
+  grossAmount      Float
+  tipsAmount       Float    @default(0)
+  cashAmount       Float    @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  dailyOperation DailyOperation @relation(fields: [dailyOperationId], references: [id], onDelete: Cascade)
+}
+
+model VehicleEnergyLog {
+  id               String   @id @default(cuid())
+  dailyOperationId String   @unique
+  energyType       String
+  fuelCost         Float?
+  fuelLiters       Float?
+  electricCost     Float?
+  electricKwh      Float?
+  kilometers       Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  dailyOperation DailyOperation @relation(fields: [dailyOperationId], references: [id], onDelete: Cascade)
+}
+
+model PrivateTrip {
+  id              String   @id @default(cuid())
+  companyId       String
+  driverId        String?
+  vehicleId       String?
+  weekLabel       String?
+  serviceDate     DateTime
+  serviceTime     String?
+  amount          Float
+  sourcePlatform  String?
+  isLuxucar       Boolean  @default(false)
+  isCash          Boolean  @default(false)
+  isCard          Boolean  @default(false)
+  intermediary    String?
+  communicator    String?
+  status          String   @default("pending")
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  driver  Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+}
