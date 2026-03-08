@@ -3,25 +3,26 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+
   const today = new Date();
 
   const startToday = new Date(today);
-  startToday.setHours(0, 0, 0, 0);
+  startToday.setHours(0,0,0,0);
 
   const endToday = new Date(today);
-  endToday.setHours(23, 59, 59, 999);
+  endToday.setHours(23,59,59,999);
 
   const startWeek = new Date(today);
   const day = startWeek.getDay();
   const diff = day === 0 ? 6 : day - 1;
   startWeek.setDate(startWeek.getDate() - diff);
-  startWeek.setHours(0, 0, 0, 0);
+  startWeek.setHours(0,0,0,0);
 
   const endWeek = new Date(startWeek);
-  endWeek.setDate(endWeek.getDate() + 6);
-  endWeek.setHours(23, 59, 59, 999);
+  endWeek.setDate(endWeek.getDate()+6);
+  endWeek.setHours(23,59,59,999);
 
-  const todayOperations = await prisma.dailyOperation.findMany({
+    const todayOperations = await prisma.dailyOperation.findMany({
     where: {
       operationDate: {
         gte: startToday,
@@ -29,103 +30,283 @@ export default async function DashboardPage() {
       },
     },
     include: {
-      platformIncomes: true,
+      driver: true,
+      vehicle: true,
+      platformIncomes: {
+        include: {
+          platform: true,
+        },
+      },
       privateIncomeSummary: true,
+      vehicleEnergyLog: true,
     },
   });
 
   const weekOperations = await prisma.dailyOperation.findMany({
-    where: {
-      operationDate: {
-        gte: startWeek,
-        lte: endWeek,
-      },
+    where:{
+      operationDate:{
+        gte:startWeek,
+        lte:endWeek
+      }
     },
-    include: {
-      platformIncomes: true,
-      privateIncomeSummary: true,
-    },
+    include:{
+      platformIncomes:true,
+      privateIncomeSummary:true
+    }
   });
 
   const pendingTrips = await prisma.privateTrip.count({
-    where: {
-      status: "pending",
-    },
+    where:{ status:"pending" }
   });
 
-  const assignedTrips = await prisma.privateTrip.count({
-    where: {
-      status: "assigned",
-    },
-  });
+  const todayIncome = todayOperations.reduce((sum,op)=>{
 
-  const activeDrivers = await prisma.driver.count({
-    where: {
-      isActive: true,
-    },
-  });
-
-  const activeVehicles = await prisma.vehicle.count({
-    where: {
-      isActive: true,
-    },
-  });
-
-  const todayIncome = todayOperations.reduce((sum, op) => {
     const platforms = op.platformIncomes.reduce(
-      (acc, income) => acc + income.grossAmount,
-      0
+      (acc,i)=>acc+i.grossAmount,0
     );
-    const privates = op.privateIncomeSummary?.grossAmount ?? 0;
-    return sum + platforms + privates;
-  }, 0);
 
-  const weekIncome = weekOperations.reduce((sum, op) => {
+    const privates = op.privateIncomeSummary?.grossAmount ?? 0;
+
+    return sum + platforms + privates;
+
+  },0);
+
+  const weekIncome = weekOperations.reduce((sum,op)=>{
+
     const platforms = op.platformIncomes.reduce(
-      (acc, income) => acc + income.grossAmount,
-      0
+      (acc,i)=>acc+i.grossAmount,0
     );
-    const privates = op.privateIncomeSummary?.grossAmount ?? 0;
-    return sum + platforms + privates;
-  }, 0);
 
-  const cards = [
-    { title: "Ingresos hoy", value: `${todayIncome.toFixed(2)} €` },
-    { title: "Ingresos semana", value: `${weekIncome.toFixed(2)} €` },
-    { title: "Privados pendientes", value: String(pendingTrips) },
-    { title: "Privados asignados", value: String(assignedTrips) },
-    { title: "Conductores activos", value: String(activeDrivers) },
-    { title: "Vehículos activos", value: String(activeVehicles) },
-  ];
+    const privates = op.privateIncomeSummary?.grossAmount ?? 0;
+
+    return sum + platforms + privates;
+
+  },0);
+
+  const energyCost = todayOperations.reduce((sum,op)=>{
+    return sum + (op.energyCost ?? 0);
+  },0);
+
+  const recentTrips = await prisma.privateTrip.findMany({
+    orderBy:{
+      serviceDate:"desc"
+    },
+    take:5,
+    include:{
+      driver:true,
+      vehicle:true
+    }
+  });
 
   return (
-    <main style={{ padding: 40, fontFamily: "Arial" }}>
-      <h1>Dashboard</h1>
 
-      <p style={{ marginBottom: 24 }}>Resumen general de la operativa.</p>
+    <main style={{padding:40,fontFamily:"Arial"}}>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 16,
-        }}
-      >
-        {cards.map((card) => (
-          <div
-            key={card.title}
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: 12,
-              padding: 20,
-              background: "#fafafa",
-            }}
-          >
-            <div style={{ color: "#666", marginBottom: 8 }}>{card.title}</div>
-            <div style={{ fontSize: 28, fontWeight: "bold" }}>{card.value}</div>
+      <h1>Dashboard VTC</h1>
+
+      {/* KPI CARDS */}
+
+      <div style={{
+        display:"grid",
+        gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",
+        gap:16,
+        marginTop:20,
+        marginBottom:30
+      }}>
+
+        <div style={{
+          background:"#e74c3c",
+          color:"white",
+          padding:20,
+          borderRadius:10
+        }}>
+          <div>Facturación Hoy</div>
+          <div style={{fontSize:28,fontWeight:"bold"}}>
+            {todayIncome.toFixed(2)} €
           </div>
-        ))}
+        </div>
+
+        <div style={{
+          background:"#27ae60",
+          color:"white",
+          padding:20,
+          borderRadius:10
+        }}>
+          <div>Neto Semana</div>
+          <div style={{fontSize:28,fontWeight:"bold"}}>
+            {weekIncome.toFixed(2)} €
+          </div>
+        </div>
+
+        <div style={{
+          background:"#f39c12",
+          color:"white",
+          padding:20,
+          borderRadius:10
+        }}>
+          <div>Coste Energía Hoy</div>
+          <div style={{fontSize:28,fontWeight:"bold"}}>
+            {energyCost.toFixed(2)} €
+          </div>
+        </div>
+
+        <div style={{
+          background:"#2980b9",
+          color:"white",
+          padding:20,
+          borderRadius:10
+        }}>
+          <div>Privados Pendientes</div>
+          <div style={{fontSize:28,fontWeight:"bold"}}>
+            {pendingTrips}
+          </div>
+        </div>
+
       </div>
+
+      <h2 style={{ marginBottom: 12 }}>Actividad diaria por conductores</h2>
+
+      {todayOperations.length === 0 ? (
+        <p style={{ marginBottom: 30 }}>No hay operaciones registradas hoy.</p>
+      ) : (
+        <div
+          style={{
+            overflowX: "auto",
+            marginBottom: 30,
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            background: "#fafafa",
+          }}
+        >
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
+                <th style={{ padding: 12 }}>Conductor</th>
+                <th style={{ padding: 12 }}>Vehículo</th>
+                <th style={{ padding: 12 }}>Bolt</th>
+                <th style={{ padding: 12 }}>Uber</th>
+                <th style={{ padding: 12 }}>Cabify</th>
+                <th style={{ padding: 12 }}>Privados</th>
+                <th style={{ padding: 12 }}>Km</th>
+                <th style={{ padding: 12 }}>Coste energía</th>
+                <th style={{ padding: 12 }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {todayOperations.map((op) => {
+                const bolt =
+                  op.platformIncomes.find((i) => i.platformId)?.grossAmount ?? 0;
+
+                const boltAmount =
+  op.platformIncomes.find(
+    (i) => i.platform?.name?.toLowerCase() === "bolt"
+  )?.grossAmount ?? 0;
+
+const uberAmount =
+  op.platformIncomes.find(
+    (i) => i.platform?.name?.toLowerCase() === "uber"
+  )?.grossAmount ?? 0;
+
+const cabifyAmount =
+  op.platformIncomes.find(
+    (i) => i.platform?.name?.toLowerCase() === "cabify"
+  )?.grossAmount ?? 0;
+                const privateAmount = op.privateIncomeSummary?.grossAmount ?? 0;
+
+                const energy =
+                  op.vehicleEnergyLog?.electricCost ??
+                  op.vehicleEnergyLog?.fuelCost ??
+                  0;
+
+                const total =
+                  boltAmount + uberAmount + cabifyAmount + privateAmount;
+
+                return (
+                  <tr key={op.id} style={{ borderTop: "1px solid #e5e5e5" }}>
+                    <td style={{ padding: 12 }}>{op.driver.fullName}</td>
+		    <td style={{ padding: 12 }}>{op.vehicle.plateNumber}</td>
+                    <td style={{ padding: 12 }}>{boltAmount.toFixed(2)} €</td>
+                    <td style={{ padding: 12 }}>{uberAmount.toFixed(2)} €</td>
+                    <td style={{ padding: 12 }}>{cabifyAmount.toFixed(2)} €</td>
+                    <td style={{ padding: 12 }}>{privateAmount.toFixed(2)} €</td>
+                    <td style={{ padding: 12 }}>
+                      {op.vehicleEnergyLog?.kilometers ?? 0}
+                    </td>
+                    <td style={{ padding: 12 }}>{energy.toFixed(2)} €</td>
+                    <td style={{ padding: 12, fontWeight: "bold" }}>
+                      {total.toFixed(2)} €
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* VIAJES PRIVADOS */}
+
+      <h2>Viajes Privados</h2>
+
+      <div style={{display:"grid",gap:12,marginTop:10}}>
+
+        {recentTrips.map(trip=>(
+
+          <div key={trip.id} style={{
+            border:"1px solid #ddd",
+            borderRadius:10,
+            padding:16,
+            background:"#fafafa"
+          }}>
+
+            <strong>
+              {new Date(trip.serviceDate).toLocaleDateString("es-ES")} · {trip.serviceTime}
+            </strong>
+
+            <div style={{marginTop:6}}>
+              Importe: {trip.amount} €
+            </div>
+
+            <div>
+              Conductor: {trip.driver?.fullName ?? "Sin asignar"}
+            </div>
+
+            <div>
+              Vehículo: {trip.vehicle?.plateNumber ?? "Sin asignar"}
+            </div>
+
+            <div
+  style={{
+    marginTop: 6,
+    display: "inline-block",
+    padding: "4px 10px",
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "white",
+    background:
+      trip.status === "pending"
+        ? "#7f8c8d"
+        : trip.status === "assigned"
+        ? "#2980b9"
+        : trip.status === "completed"
+        ? "#27ae60"
+        : trip.status === "cancelled"
+        ? "#c0392b"
+        : "#95a5a6",
+  }}
+>
+  {trip.status}
+</div>
+
+          </div>
+
+        ))}
+
+      </div>
+
     </main>
+
   );
+
 }
