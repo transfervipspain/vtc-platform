@@ -2,13 +2,40 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  Car,
+  Users,
+  Calendar,
+  ClipboardList,
+} from "lucide-react";
 
 const links = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/operacion-diaria", label: "Operación diaria" },
-  { href: "/privados", label: "Viajes privados" },
-  { href: "/conductores", label: "Conductores" },
-  { href: "/agenda", label: "Agenda diaria" },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    href: "/operacion-diaria",
+    label: "Operación diaria",
+    icon: ClipboardList,
+  },
+  {
+    href: "/privados",
+    label: "Viajes privados",
+    icon: Car,
+  },
+  {
+    href: "/conductores",
+    label: "Conductores",
+    icon: Users,
+  },
+  {
+    href: "/agenda",
+    label: "Agenda diaria",
+    icon: Calendar,
+  },
 ];
 
 export default function Sidebar() {
@@ -17,7 +44,7 @@ export default function Sidebar() {
   return (
     <aside
       style={{
-        width: 240,
+        width: 250,
         minHeight: "100vh",
         borderRight: "1px solid #e5e5e5",
         background: "#fafafa",
@@ -25,33 +52,56 @@ export default function Sidebar() {
         boxSizing: "border-box",
       }}
     >
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 12, color: "#777", marginBottom: 6 }}>
+      {/* Logo / título */}
+
+      <div style={{ marginBottom: 32 }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: "#777",
+            marginBottom: 6,
+            textTransform: "uppercase",
+          }}
+        >
           Plataforma VTC
         </div>
-        <div style={{ fontSize: 22, fontWeight: "bold" }}>
+
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight: "bold",
+          }}
+        >
           Transfer Vip Spain
         </div>
       </div>
 
-      <nav style={{ display: "grid", gap: 8 }}>
+      {/* navegación */}
+
+      <nav style={{ display: "grid", gap: 6 }}>
         {links.map((link) => {
           const active = pathname === link.href;
+          const Icon = link.icon;
 
           return (
             <Link
               key={link.href}
               href={link.href}
               style={{
-                display: "block",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
                 padding: "10px 12px",
                 borderRadius: 8,
                 textDecoration: "none",
                 color: active ? "white" : "#222",
                 background: active ? "#111" : "transparent",
-                fontWeight: active ? "bold" : 500,
+                fontWeight: 500,
+                transition: "0.15s",
               }}
             >
+              <Icon size={18} />
+
               {link.label}
             </Link>
           );
