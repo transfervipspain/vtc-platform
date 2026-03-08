@@ -84,8 +84,8 @@ export default function DailyOperationForm({
       return;
     }
 
-    setMessage("Registro guardado correctamente");
-    window.location.reload();
+      setMessage("Registro guardado correctamente");
+      window.location.href = "/operacion-diaria";
   }
 
   return (
