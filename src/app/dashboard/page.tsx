@@ -1,3 +1,4 @@
+import TripActions from "./TripActions";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -119,9 +120,19 @@ const recentTrips = await prisma.privateTrip.findMany({
 
   return (
 
-    <main style={{padding:40,fontFamily:"Arial"}}>
+    <main
+  style={{
+    padding: 32,
+    fontFamily: "Arial",
+    maxWidth: 1280,
+    margin: "0 auto",
+  }}
+>
 
-      <h1>Dashboard VTC</h1>
+      <h1 style={{ marginBottom: 8 }}>Dashboard VTC</h1>
+<p style={{ marginBottom: 24, color: "#555" }}>
+  Resumen general de la operativa.
+</p>
 
       {/* KPI CARDS */}
 
@@ -183,53 +194,57 @@ const recentTrips = await prisma.privateTrip.findMany({
 
       </div>
 
-      <h2 style={{ marginBottom: 12 }}>Actividad diaria por conductores</h2>
+            <h2 style={{ marginBottom: 12 }}>Actividad diaria por conductores</h2>
 
       {todayOperations.length === 0 ? (
-        <p style={{ marginBottom: 30 }}>No hay operaciones registradas hoy.</p>
+        <p style={{ marginBottom: 24 }}>No hay operaciones registradas hoy.</p>
       ) : (
         <div
           style={{
             overflowX: "auto",
-            marginBottom: 30,
+            marginBottom: 24,
             border: "1px solid #ddd",
             borderRadius: 10,
             background: "#fafafa",
           }}
         >
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: 14,
+            }}
+          >
             <thead>
               <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-                <th style={{ padding: 12 }}>Conductor</th>
-                <th style={{ padding: 12 }}>Vehículo</th>
-                <th style={{ padding: 12 }}>Bolt</th>
-                <th style={{ padding: 12 }}>Uber</th>
-                <th style={{ padding: 12 }}>Cabify</th>
-                <th style={{ padding: 12 }}>Privados</th>
-                <th style={{ padding: 12 }}>Km</th>
-                <th style={{ padding: 12 }}>Coste energía</th>
-                <th style={{ padding: 12 }}>Total</th>
+                <th style={{ padding: "8px 10px" }}>Conductor</th>
+                <th style={{ padding: "8px 10px" }}>Vehículo</th>
+                <th style={{ padding: "8px 10px" }}>Bolt</th>
+                <th style={{ padding: "8px 10px" }}>Uber</th>
+                <th style={{ padding: "8px 10px" }}>Cabify</th>
+                <th style={{ padding: "8px 10px" }}>Privados</th>
+                <th style={{ padding: "8px 10px" }}>Km</th>
+                <th style={{ padding: "8px 10px" }}>Energía</th>
+                <th style={{ padding: "8px 10px" }}>Total</th>
               </tr>
             </thead>
             <tbody>
               {todayOperations.map((op) => {
-                const bolt =
-                  op.platformIncomes.find((i) => i.platformId)?.grossAmount ?? 0;
-
                 const boltAmount =
-  op.platformIncomes.find(
-    (i) => i.platform?.name?.toLowerCase() === "bolt"
-  )?.grossAmount ?? 0;
+                  op.platformIncomes.find(
+                    (i) => i.platform?.name?.toLowerCase() === "bolt"
+                  )?.grossAmount ?? 0;
 
-const uberAmount =
-  op.platformIncomes.find(
-    (i) => i.platform?.name?.toLowerCase() === "uber"
-  )?.grossAmount ?? 0;
+                const uberAmount =
+                  op.platformIncomes.find(
+                    (i) => i.platform?.name?.toLowerCase() === "uber"
+                  )?.grossAmount ?? 0;
 
-const cabifyAmount =
-  op.platformIncomes.find(
-    (i) => i.platform?.name?.toLowerCase() === "cabify"
-  )?.grossAmount ?? 0;
+                const cabifyAmount =
+                  op.platformIncomes.find(
+                    (i) => i.platform?.name?.toLowerCase() === "cabify"
+                  )?.grossAmount ?? 0;
+
                 const privateAmount = op.privateIncomeSummary?.grossAmount ?? 0;
 
                 const energy =
@@ -242,17 +257,17 @@ const cabifyAmount =
 
                 return (
                   <tr key={op.id} style={{ borderTop: "1px solid #e5e5e5" }}>
-                    <td style={{ padding: 12 }}>{op.driver.fullName}</td>
-		    <td style={{ padding: 12 }}>{op.vehicle.plateNumber}</td>
-                    <td style={{ padding: 12 }}>{boltAmount.toFixed(2)} €</td>
-                    <td style={{ padding: 12 }}>{uberAmount.toFixed(2)} €</td>
-                    <td style={{ padding: 12 }}>{cabifyAmount.toFixed(2)} €</td>
-                    <td style={{ padding: 12 }}>{privateAmount.toFixed(2)} €</td>
-                    <td style={{ padding: 12 }}>
+                    <td style={{ padding: "8px 10px" }}>{op.driver.fullName}</td>
+                    <td style={{ padding: "8px 10px" }}>{op.vehicle.plateNumber}</td>
+                    <td style={{ padding: "8px 10px" }}>{boltAmount.toFixed(2)} €</td>
+                    <td style={{ padding: "8px 10px" }}>{uberAmount.toFixed(2)} €</td>
+                    <td style={{ padding: "8px 10px" }}>{cabifyAmount.toFixed(2)} €</td>
+                    <td style={{ padding: "8px 10px" }}>{privateAmount.toFixed(2)} €</td>
+                    <td style={{ padding: "8px 10px" }}>
                       {op.vehicleEnergyLog?.kilometers ?? 0}
                     </td>
-                    <td style={{ padding: 12 }}>{energy.toFixed(2)} €</td>
-                    <td style={{ padding: 12, fontWeight: "bold" }}>
+                    <td style={{ padding: "8px 10px" }}>{energy.toFixed(2)} €</td>
+                    <td style={{ padding: "8px 10px", fontWeight: "bold" }}>
                       {total.toFixed(2)} €
                     </td>
                   </tr>
@@ -262,6 +277,7 @@ const cabifyAmount =
           </table>
         </div>
       )}
+     
 
       <h2 style={{ marginBottom: 12 }}>Timeline de servicios de hoy</h2>
 
@@ -369,6 +385,7 @@ const cabifyAmount =
         <th style={{ padding: 12 }}>Conductor</th>
         <th style={{ padding: 12 }}>Vehículo</th>
         <th style={{ padding: 12 }}>Estado</th>
+	<th style={{ padding: 12 }}>Acción</th>
       </tr>
     </thead>
     <tbody>
@@ -384,6 +401,9 @@ const cabifyAmount =
           <td style={{ padding: 12 }}>
             {trip.vehicle?.plateNumber ?? "Sin asignar"}
           </td>
+	<td style={{ padding: 12 }}>
+  <TripActions tripId={trip.id} status={trip.status} />
+</td>
           <td style={{ padding: 12 }}>
             <span
               style={{
