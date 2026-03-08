@@ -17,6 +17,9 @@ export default function Home() {
 <div style={{ marginTop:12 }}>
 <Link href="/conductores">Conductores</Link>
 </div>
+<div style={{ marginTop: 12 }}>
+  <Link href="/agenda">Agenda diaria</Link>
+</div>
     </main>
   );
 }
