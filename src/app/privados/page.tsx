@@ -1,10 +1,11 @@
-import PrivateTripForm from "./PrivateTripForm";
 import { prisma } from "@/lib/prisma";
-
+import PrivateTripForm from "./PrivateTripForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function PrivadosPage() {
+  const company = await prisma.company.findFirst();
+
   const trips = await prisma.privateTrip.findMany({
     orderBy: {
       serviceDate: "desc",
@@ -18,16 +19,11 @@ export default async function PrivadosPage() {
 
   return (
     <main style={{ padding: 40, fontFamily: "Arial" }}>
+      <h1>Viajes privados</h1>
 
-<h1>Viajes privados</h1>
+      <p style={{ marginBottom: 20 }}>Registro de servicios privados.</p>
 
-<PrivateTripForm />
-
-
-
-      <p style={{ marginBottom: 20 }}>
-        Registro de servicios privados.
-      </p>
+      {company && <PrivateTripForm companyId={company.id} />}
 
       {trips.length === 0 ? (
         <p>No hay viajes privados todavía.</p>
@@ -48,25 +44,11 @@ export default async function PrivadosPage() {
                 {trip.serviceTime}
               </strong>
 
-              <div style={{ marginTop: 6 }}>
-                Importe: {trip.amount} €
-              </div>
-
-              <div>
-                Conductor: {trip.driver?.fullName ?? "Sin asignar"}
-              </div>
-
-              <div>
-                Vehículo: {trip.vehicle?.plateNumber ?? "Sin asignar"}
-              </div>
-
-              <div>
-                Intermediario: {trip.intermediary ?? "-"}
-              </div>
-
-              <div>
-                Estado: {trip.status}
-              </div>
+              <div style={{ marginTop: 6 }}>Importe: {trip.amount} €</div>
+              <div>Conductor: {trip.driver?.fullName ?? "Sin asignar"}</div>
+              <div>Vehículo: {trip.vehicle?.plateNumber ?? "Sin asignar"}</div>
+              <div>Intermediario: {trip.intermediary ?? "-"}</div>
+              <div>Estado: {trip.status}</div>
             </div>
           ))}
         </div>

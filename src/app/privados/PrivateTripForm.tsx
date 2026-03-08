@@ -1,8 +1,12 @@
 "use client";
 
+type Props = {
+  companyId: string;
+};
+
 import { useState } from "react";
 
-export default function PrivateTripForm() {
+export default function PrivateTripForm({ companyId }: Props) {
 
   const [serviceDate,setServiceDate] = useState("");
   const [serviceTime,setServiceTime] = useState("");
@@ -28,12 +32,13 @@ export default function PrivateTripForm() {
         "Content-Type":"application/json"
       },
       body:JSON.stringify({
+  	companyId,
         serviceDate,
         serviceTime,
         amount:Number(amount),
-origin,
-stops,
-destination,
+        origin,
+	stops,
+	destination,
         intermediary,
         communicator,
         notes,
