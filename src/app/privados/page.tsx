@@ -1,4 +1,6 @@
+import PrivateTripForm from "./PrivateTripForm";
 import { prisma } from "@/lib/prisma";
+
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,12 @@ export default async function PrivadosPage() {
 
   return (
     <main style={{ padding: 40, fontFamily: "Arial" }}>
-      <h1>Viajes privados</h1>
+
+<h1>Viajes privados</h1>
+
+<PrivateTripForm />
+
+
 
       <p style={{ marginBottom: 20 }}>
         Registro de servicios privados.

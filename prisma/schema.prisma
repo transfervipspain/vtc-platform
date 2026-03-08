@@ -151,6 +151,9 @@ model PrivateTrip {
   serviceDate     DateTime
   serviceTime     String?
   amount          Float
+origin       String?
+stops        String?
+destination  String?
   sourcePlatform  String?
   isLuxucar       Boolean  @default(false)
   isCash          Boolean  @default(false)
