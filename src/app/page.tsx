@@ -1,27 +1,5 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <main style={{ padding: 40, fontFamily: "Arial" }}>
-      <h1>Transfer Vip Spain</h1>
-
-      <p>La plataforma VTC está funcionando 🚀</p>
-	<div style={{ marginTop: 12 }}>
-  <Link href="/dashboard">Dashboard</Link>
-</div>
-      <div style={{ marginTop: 24 }}>
-        <Link href="/operacion-diaria">Operación diaria</Link>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <Link href="/privados">Viajes privados</Link>
-      </div>
-<div style={{ marginTop:12 }}>
-<Link href="/conductores">Conductores</Link>
-</div>
-<div style={{ marginTop: 12 }}>
-  <Link href="/agenda">Agenda diaria</Link>
-</div>
-    </main>
-  );
+  redirect("/dashboard");
 }
