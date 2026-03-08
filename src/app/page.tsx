@@ -14,6 +14,9 @@ export default function Home() {
       <div style={{ marginTop: 12 }}>
         <Link href="/privados">Viajes privados</Link>
       </div>
+<div style={{ marginTop:12 }}>
+<Link href="/conductores">Conductores</Link>
+</div>
     </main>
   );
 }
