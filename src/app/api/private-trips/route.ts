@@ -43,4 +43,4 @@ destination:body.destination,
 
   }
 
-}open -a TextEdit src/app/api/private-trips/route.ts
+}
