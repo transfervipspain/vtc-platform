@@ -92,16 +92,30 @@ const energyCost = todayOperations.reduce((sum, op) => {
   return sum + energy;
 }, 0);
 
-  const recentTrips = await prisma.privateTrip.findMany({
-    orderBy:{
-      serviceDate:"desc"
+const todayTrips = await prisma.privateTrip.findMany({
+  where: {
+    serviceDate: {
+      gte: startToday,
+      lte: endToday,
     },
-    take:5,
-    include:{
-      driver:true,
-      vehicle:true
-    }
-  });
+  },
+  orderBy: [{ serviceTime: "asc" }],
+  include: {
+    driver: true,
+    vehicle: true,
+  },
+});
+
+const recentTrips = await prisma.privateTrip.findMany({
+  orderBy: {
+    serviceDate: "desc",
+  },
+  take: 5,
+  include: {
+    driver: true,
+    vehicle: true,
+  },
+});
 
   return (
 
@@ -249,66 +263,156 @@ const cabifyAmount =
         </div>
       )}
 
+      <h2 style={{ marginBottom: 12 }}>Timeline de servicios de hoy</h2>
+
+      {todayTrips.length === 0 ? (
+        <p style={{ marginBottom: 30 }}>No hay servicios privados para hoy.</p>
+      ) : (
+        <div style={{ display: "grid", gap: 12, marginBottom: 30 }}>
+          {todayTrips.map((trip) => (
+            <div
+              key={trip.id}
+              style={{
+                border: "1px solid #ddd",
+                borderRadius: 12,
+                padding: 16,
+                background: "#fafafa",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <strong style={{ fontSize: 18 }}>
+                  {trip.serviceTime || "--:--"} · {trip.amount} €
+                </strong>
+
+                <div
+                  style={{
+                    display: "inline-block",
+                    padding: "4px 10px",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: "bold",
+                    color: "white",
+                    background:
+                      trip.status === "pending"
+                        ? "#7f8c8d"
+                        : trip.status === "assigned"
+                        ? "#2980b9"
+                        : trip.status === "completed"
+                        ? "#27ae60"
+                        : trip.status === "cancelled"
+                        ? "#c0392b"
+                        : "#95a5a6",
+                  }}
+                >
+                  {trip.status}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                <div>
+                  <strong>Origen:</strong> {trip.origin || "-"}
+                </div>
+
+                {trip.stops && (
+                  <div>
+                    <strong>Paradas:</strong> {trip.stops}
+                  </div>
+                )}
+
+                <div>
+                  <strong>Destino:</strong> {trip.destination || "-"}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 10 }}>
+                <div>
+                  <strong>Conductor:</strong> {trip.driver?.fullName ?? "Sin asignar"}
+                </div>
+                <div>
+                  <strong>Vehículo:</strong> {trip.vehicle?.plateNumber ?? "Sin asignar"}
+                </div>
+                <div>
+                  <strong>Intermediario:</strong> {trip.intermediary ?? "-"}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* VIAJES PRIVADOS */}
 
-      <h2>Viajes Privados</h2>
+<h2>Viajes Privados</h2>
 
-      <div style={{display:"grid",gap:12,marginTop:10}}>
-
-        {recentTrips.map(trip=>(
-
-          <div key={trip.id} style={{
-            border:"1px solid #ddd",
-            borderRadius:10,
-            padding:16,
-            background:"#fafafa"
-          }}>
-
-            <strong>
-              {new Date(trip.serviceDate).toLocaleDateString("es-ES")} · {trip.serviceTime}
-            </strong>
-
-            <div style={{marginTop:6}}>
-              Importe: {trip.amount} €
-            </div>
-
-            <div>
-              Conductor: {trip.driver?.fullName ?? "Sin asignar"}
-            </div>
-
-            <div>
-              Vehículo: {trip.vehicle?.plateNumber ?? "Sin asignar"}
-            </div>
-
-            <div
+<div
   style={{
-    marginTop: 6,
-    display: "inline-block",
-    padding: "4px 10px",
-    borderRadius: 6,
-    fontSize: 12,
-    fontWeight: "bold",
-    color: "white",
-    background:
-      trip.status === "pending"
-        ? "#7f8c8d"
-        : trip.status === "assigned"
-        ? "#2980b9"
-        : trip.status === "completed"
-        ? "#27ae60"
-        : trip.status === "cancelled"
-        ? "#c0392b"
-        : "#95a5a6",
+    marginTop: 10,
+    border: "1px solid #ddd",
+    borderRadius: 10,
+    overflow: "hidden",
+    background: "#fafafa",
   }}
 >
-  {trip.status}
+  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <thead>
+      <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
+        <th style={{ padding: 12 }}>Fecha / Hora</th>
+        <th style={{ padding: 12 }}>Importe</th>
+        <th style={{ padding: 12 }}>Conductor</th>
+        <th style={{ padding: 12 }}>Vehículo</th>
+        <th style={{ padding: 12 }}>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {recentTrips.map((trip) => (
+        <tr key={trip.id} style={{ borderTop: "1px solid #e5e5e5" }}>
+          <td style={{ padding: 12 }}>
+            {new Date(trip.serviceDate).toLocaleDateString("es-ES")} · {trip.serviceTime}
+          </td>
+          <td style={{ padding: 12 }}>{trip.amount} €</td>
+          <td style={{ padding: 12 }}>
+            {trip.driver?.fullName ?? "Sin asignar"}
+          </td>
+          <td style={{ padding: 12 }}>
+            {trip.vehicle?.plateNumber ?? "Sin asignar"}
+          </td>
+          <td style={{ padding: 12 }}>
+            <span
+              style={{
+                display: "inline-block",
+                padding: "4px 10px",
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: "bold",
+                color: "white",
+                background:
+                  trip.status === "pending"
+                    ? "#7f8c8d"
+                    : trip.status === "assigned"
+                    ? "#2980b9"
+                    : trip.status === "completed"
+                    ? "#27ae60"
+                    : trip.status === "cancelled"
+                    ? "#c0392b"
+                    : "#95a5a6",
+              }}
+            >
+              {trip.status}
+            </span>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
 </div>
-
-          </div>
-
-        ))}
-
-      </div>
 
     </main>
 
