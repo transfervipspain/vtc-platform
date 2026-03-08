@@ -7,14 +7,22 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
+    const driver = await prisma.driver.findUnique({
+      where: { id: body.driverId }
+    });
+
     const trip = await prisma.privateTrip.update({
+
       where: {
         id: body.tripId
       },
+
       data: {
         driverId: body.driverId,
+        vehicleId: driver?.defaultVehicleId ?? null,
         status: "assigned"
       }
+
     });
 
     return NextResponse.json(trip);

@@ -37,12 +37,14 @@ model Driver {
   hireDate             DateTime?
   isActive             Boolean  @default(true)
   notes                String?
+  defaultVehicleId     String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   dailyOperations DailyOperation[]
   privateTrips    PrivateTrip[]
+  defaultVehicle  Vehicle?         @relation(fields: [defaultVehicleId], references: [id])
 }
 
 model Vehicle {
@@ -60,6 +62,7 @@ model Vehicle {
   company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   dailyOperations DailyOperation[]
   privateTrips    PrivateTrip[]
+  defaultDrivers  Driver[]
 }
 
 model Platform {
