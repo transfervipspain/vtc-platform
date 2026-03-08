@@ -30,16 +30,16 @@ export default async function DashboardPage() {
       },
     },
     include: {
-      driver: true,
-      vehicle: true,
-      platformIncomes: {
-        include: {
-          platform: true,
-        },
-      },
-      privateIncomeSummary: true,
-      vehicleEnergyLog: true,
+  driver: true,
+  vehicle: true,
+  platformIncomes: {
+    include: {
+      platform: true,
     },
+  },
+  privateIncomeSummary: true,
+  vehicleEnergyLog: true,
+},
   });
 
   const weekOperations = await prisma.dailyOperation.findMany({
@@ -83,9 +83,14 @@ export default async function DashboardPage() {
 
   },0);
 
-  const energyCost = todayOperations.reduce((sum,op)=>{
-    return sum + (op.energyCost ?? 0);
-  },0);
+const energyCost = todayOperations.reduce((sum, op) => {
+  const energy =
+    op.vehicleEnergyLog?.electricCost ??
+    op.vehicleEnergyLog?.fuelCost ??
+    0;
+
+  return sum + energy;
+}, 0);
 
   const recentTrips = await prisma.privateTrip.findMany({
     orderBy:{
