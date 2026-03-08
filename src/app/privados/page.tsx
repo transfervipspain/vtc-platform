@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import PrivateTripForm from "./PrivateTripForm";
+import AssignDriverSelect from "./AssignDriverSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,10 @@ export default async function PrivadosPage() {
       driver: true,
       vehicle: true,
     },
+  });
+
+  const drivers = await prisma.driver.findMany({
+    orderBy: { fullName: "asc" },
   });
 
   return (
@@ -49,6 +54,8 @@ export default async function PrivadosPage() {
               <div>Vehículo: {trip.vehicle?.plateNumber ?? "Sin asignar"}</div>
               <div>Intermediario: {trip.intermediary ?? "-"}</div>
               <div>Estado: {trip.status}</div>
+
+              <AssignDriverSelect tripId={trip.id} drivers={drivers} />
             </div>
           ))}
         </div>
