@@ -8,9 +8,12 @@ export const dynamic = "force-dynamic";
 export default async function VehiculosPage() {
   const company = await prisma.company.findFirst();
 
-  const vehicles = await prisma.vehicle.findMany({
-    orderBy: { plateNumber: "asc" },
-  });
+const vehicles = await prisma.vehicle.findMany({
+  orderBy: [
+    { isActive: "desc" },
+    { plateNumber: "asc" }
+  ],
+});
 
   return (
     <main style={{ padding: 40, fontFamily: "Arial" }}>
