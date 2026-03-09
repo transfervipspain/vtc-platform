@@ -31,6 +31,11 @@ const links = [
     label: "Conductores",
     icon: Users,
   },
+{
+  href: "/vehiculos",
+  label: "Vehículos",
+  icon: Car,
+},
   {
     href: "/agenda",
     label: "Agenda diaria",
