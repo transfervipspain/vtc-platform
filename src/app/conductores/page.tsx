@@ -46,7 +46,20 @@ const company = await prisma.company.findFirst();
       Vehículo habitual: {driver.defaultVehicle?.plateNumber ?? "No asignado"}
     </div>
 
-  <div>Estado: {driver.isActive ? "Activo" : "Inactivo"}</div>
+  <div style={{ marginTop: 6 }}>
+  <span
+    style={{
+      padding: "3px 8px",
+      borderRadius: 6,
+      fontSize: 12,
+      fontWeight: "bold",
+      color: "white",
+      background: driver.isActive ? "#27ae60" : "#c0392b",
+    }}
+  >
+    {driver.isActive ? "ACTIVO" : "INACTIVO"}
+  </span>
+</div>
 
     <DefaultVehicleSelect
       driverId={driver.id}
