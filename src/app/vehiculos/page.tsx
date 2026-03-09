@@ -18,55 +18,86 @@ export default async function VehiculosPage() {
 
       {company && <VehicleForm companyId={company.id} />}
 
-      <div style={{ display: "grid", gap: 12 }}>
-        {vehicles.map((vehicle) => (
-          <div
-            key={vehicle.id}
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: 10,
-              padding: 12,
-              background: "#fafafa",
-display: "grid",
-gap: 6,
-            }}
-          >
-            <strong>{vehicle.plateNumber}</strong>
+      <div
+        style={{
+          border: "1px solid #ddd",
+          borderRadius: 10,
+          overflow: "hidden",
+          background: "#fafafa",
+          marginTop: 20,
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: 14,
+          }}
+        >
+          <thead>
+            <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
+              <th style={{ padding: "10px 12px" }}>Matrícula</th>
+              <th style={{ padding: "10px 12px" }}>Marca</th>
+              <th style={{ padding: "10px 12px" }}>Modelo</th>
+              <th style={{ padding: "10px 12px" }}>Energía</th>
+              <th style={{ padding: "10px 12px" }}>Estado</th>
+              <th style={{ padding: "10px 12px" }}>Acciones</th>
+            </tr>
+          </thead>
 
-            <div>
-              {vehicle.brand} {vehicle.model}
-            </div>
+          <tbody>
+            {vehicles.map((vehicle) => (
+              <tr key={vehicle.id} style={{ borderTop: "1px solid #e5e5e5" }}>
+                <td style={{ padding: "10px 12px", fontWeight: "bold" }}>
+                  {vehicle.plateNumber}
+                </td>
 
-            <div>Tipo: {vehicle.energyType}</div>
-<div style={{ marginTop: 10 }}>
-  <ToggleVehicleActiveButton
-    vehicleId={vehicle.id}
-    isActive={vehicle.isActive}
-  />
-</div>
-<div style={{ marginTop: 6 }}>
-  <span
-    style={{
-      padding: "3px 8px",
-      borderRadius: 6,
-      fontSize: 12,
-      fontWeight: "bold",
-      color: "white",
-      background: vehicle.isActive ? "#27ae60" : "#c0392b",
-    }}
-  >
-    {vehicle.isActive ? "ACTIVO" : "INACTIVO"}
-  </span>
-</div>
+                <td style={{ padding: "10px 12px" }}>
+                  {vehicle.brand ?? "-"}
+                </td>
 
-<EditVehicleForm
-  vehicleId={vehicle.id}
-  initialBrand={vehicle.brand}
-  initialModel={vehicle.model}
-  initialEnergyType={vehicle.energyType}
-/>
-          </div>
-        ))}
+                <td style={{ padding: "10px 12px" }}>
+                  {vehicle.model ?? "-"}
+                </td>
+
+                <td style={{ padding: "10px 12px" }}>
+                  {vehicle.energyType}
+                </td>
+
+                <td style={{ padding: "10px 12px" }}>
+                  <span
+                    style={{
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontWeight: "bold",
+                      color: "white",
+                      background: vehicle.isActive ? "#27ae60" : "#c0392b",
+                    }}
+                  >
+                    {vehicle.isActive ? "ACTIVO" : "INACTIVO"}
+                  </span>
+                </td>
+
+                <td style={{ padding: "10px 12px" }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <ToggleVehicleActiveButton
+                      vehicleId={vehicle.id}
+                      isActive={vehicle.isActive}
+                    />
+
+                    <EditVehicleForm
+                      vehicleId={vehicle.id}
+                      initialBrand={vehicle.brand}
+                      initialModel={vehicle.model}
+                      initialEnergyType={vehicle.energyType}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </main>
   );
