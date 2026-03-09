@@ -22,7 +22,32 @@ export default function EditDriverForm({
     initialLicensePoints?.toString() ?? ""
   );
   const [message, setMessage] = useState("");
+  async function handleDelete() {
+    const confirmed = window.confirm(
+      "¿Seguro que quieres eliminar este conductor? Solo se podrá borrar si no tiene historial."
+    );
 
+    if (!confirmed) return;
+
+    const res = await fetch("/api/drivers/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        driverId,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setMessage(data.error || "Error al eliminar");
+      return;
+    }
+
+    window.location.reload();
+  }
   async function handleSave() {
     setMessage("Guardando...");
 
@@ -134,6 +159,19 @@ export default function EditDriverForm({
             >
               Cancelar
             </button>
+          <button
+            onClick={handleDelete}
+            style={{
+              background: "#c0392b",
+              color: "white",
+              border: "none",
+              padding: "6px 10px",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            Eliminar conductor
+          </button>
           </div>
 
           {message && <p>{message}</p>}

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import VehicleForm from "./VehicleForm";
+import ToggleVehicleActiveButton from "./ToggleVehicleActiveButton";
+import EditVehicleForm from "./EditVehicleForm";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,19 @@ export default async function VehiculosPage() {
             </div>
 
             <div>Tipo: {vehicle.energyType}</div>
+<div style={{ marginTop: 10 }}>
+  <ToggleVehicleActiveButton
+    vehicleId={vehicle.id}
+    isActive={vehicle.isActive}
+  />
+</div>
+
+<EditVehicleForm
+  vehicleId={vehicle.id}
+  initialBrand={vehicle.brand}
+  initialModel={vehicle.model}
+  initialEnergyType={vehicle.energyType}
+/>
           </div>
         ))}
       </div>
