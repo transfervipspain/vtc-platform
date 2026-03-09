@@ -13,6 +13,9 @@ const drivers = await prisma.driver.findMany({
     { isActive: "desc" },
     { fullName: "asc" }
   ],
+  include: {
+    defaultVehicle: true
+  }
 });
   const vehicles = await prisma.vehicle.findMany({
     orderBy: { plateNumber: "asc" },
