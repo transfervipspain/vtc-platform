@@ -43,15 +43,17 @@ const drivers = await prisma.driver.findMany({
       fontSize: 14,
     }}
   >
-    <thead>
-      <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-        <th style={{ padding: "10px 12px" }}>Nombre</th>
-        <th style={{ padding: "10px 12px" }}>Teléfono</th>
-        <th style={{ padding: "10px 12px" }}>Vehículo habitual</th>
-        <th style={{ padding: "10px 12px" }}>Estado</th>
-        <th style={{ padding: "10px 12px" }}>Acciones</th>
-      </tr>
-    </thead>
+<thead>
+  <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
+    <th style={{ padding: "10px 12px" }}>Nombre</th>
+    <th style={{ padding: "10px 12px" }}>Teléfono</th>
+    <th style={{ padding: "10px 12px" }}>Email</th>
+    <th style={{ padding: "10px 12px" }}>Puntos</th>
+    <th style={{ padding: "10px 12px" }}>Vehículo habitual</th>
+    <th style={{ padding: "10px 12px" }}>Estado</th>
+    <th style={{ padding: "10px 12px" }}>Acciones</th>
+  </tr>
+</thead>
 
     <tbody>
       {drivers.map((driver) => (
@@ -63,6 +65,13 @@ const drivers = await prisma.driver.findMany({
           <td style={{ padding: "10px 12px" }}>
             {driver.phone ?? "-"}
           </td>
+	  <td style={{ padding: "10px 12px" }}>
+  {driver.email ?? "-"}
+</td>
+
+<td style={{ padding: "10px 12px", fontWeight: "bold" }}>
+  {driver.licensePoints ?? "-"}
+</td>
 
           <td style={{ padding: "10px 12px" }}>
             {driver.defaultVehicle?.plateNumber ?? "No asignado"}

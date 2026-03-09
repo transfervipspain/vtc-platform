@@ -20,6 +20,26 @@ export default function EditVehicleForm({
   const [model, setModel] = useState(initialModel ?? "");
   const [energyType, setEnergyType] = useState(initialEnergyType);
   const [message, setMessage] = useState("");
+
+  async function handleSave() {
+    const res = await fetch("/api/vehicles/update", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ vehicleId, brand, model, energyType }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      setMessage(data.error || "Error guardando");
+      return;
+    }
+
+    window.location.reload();
+  }
+
   async function handleDelete() {
     const confirmed = window.confirm(
       "¿Seguro que quieres eliminar este vehículo? Solo se podrá borrar si no tiene historial ni está asignado."
@@ -46,125 +66,129 @@ export default function EditVehicleForm({
 
     window.location.reload();
   }
-  async function handleSave() {
-    const res = await fetch("/api/vehicles/update", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ vehicleId, brand, model, energyType }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setMessage(data.error || "Error guardando");
-      return;
-    }
-
-    window.location.reload();
-  }
 
   return (
-    <div style={{ marginTop: 10 }}>
-      {!isOpen ? (
-        <button
-          onClick={() => setIsOpen(true)}
-          style={{
-            background: "#111",
-            color: "white",
-            border: "none",
-            padding: "6px 10px",
-            borderRadius: 6,
-            cursor: "pointer",
-          }}
-        >
-          Editar
-        </button>
-      ) : (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        style={{
+          background: "#111",
+          color: "white",
+          border: "none",
+          padding: "6px 10px",
+          borderRadius: 6,
+          cursor: "pointer",
+        }}
+      >
+        Editar
+      </button>
+
+      {isOpen && (
         <div
           style={{
-            border: "1px solid #ddd",
-            padding: 12,
-            borderRadius: 8,
-            marginTop: 8,
-            display: "grid",
-            gap: 10,
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
           }}
         >
-          <div>
-            <label>Marca</label>
-            <input
-              value={brand}
-              onChange={(e) => setBrand(e.target.value)}
-              style={{ width: "100%", padding: 8 }}
-            />
-          </div>
-
-          <div>
-            <label>Modelo</label>
-            <input
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              style={{ width: "100%", padding: 8 }}
-            />
-          </div>
-
-          <div>
-            <label>Energía</label>
-            <select
-              value={energyType}
-              onChange={(e) => setEnergyType(e.target.value)}
-              style={{ width: "100%", padding: 8 }}
-            >
-              <option value="electric">Eléctrico</option>
-              <option value="hybrid">Híbrido</option>
-              <option value="gasoline">Gasolina</option>
-              <option value="diesel">Diésel</option>
-            </select>
-          </div>
-
-          <button
-            onClick={handleSave}
+          <div
             style={{
-              background: "#27ae60",
-              color: "white",
-              border: "none",
-              padding: "6px 10px",
-              borderRadius: 6,
+              width: 420,
+              maxWidth: "90vw",
+              background: "white",
+              borderRadius: 12,
+              padding: 20,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+              display: "grid",
+              gap: 12,
             }}
           >
-            Guardar
-          </button>
+            <h3 style={{ margin: 0 }}>Editar vehículo</h3>
 
-          <button
-            onClick={() => setIsOpen(false)}
-            style={{
-              background: "#777",
-              color: "white",
-              border: "none",
-              padding: "6px 10px",
-              borderRadius: 6,
-            }}
-          >
-            Cancelar
-          </button>
- <button
-              onClick={handleDelete}
-              style={{
-                background: "#c0392b",
-                color: "white",
-                border: "none",
-                padding: "6px 10px",
-                borderRadius: 6,
-              }}
-            >
-              Eliminar vehículo
-            </button>
+            <div>
+              <label>Marca</label>
+              <input
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                style={{ width: "100%", padding: 8, marginTop: 4 }}
+              />
+            </div>
 
-          {message && <p>{message}</p>}
+            <div>
+              <label>Modelo</label>
+              <input
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                style={{ width: "100%", padding: 8, marginTop: 4 }}
+              />
+            </div>
+
+            <div>
+              <label>Energía</label>
+              <select
+                value={energyType}
+                onChange={(e) => setEnergyType(e.target.value)}
+                style={{ width: "100%", padding: 8, marginTop: 4 }}
+              >
+                <option value="electric">Eléctrico</option>
+                <option value="hybrid">Híbrido</option>
+                <option value="gasoline">Gasolina</option>
+                <option value="diesel">Diésel</option>
+              </select>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button
+                onClick={handleSave}
+                style={{
+                  background: "#27ae60",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                Guardar
+              </button>
+
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{
+                  background: "#777",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={handleDelete}
+                style={{
+                  background: "#c0392b",
+                  color: "white",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                Eliminar vehículo
+              </button>
+            </div>
+
+            {message && <p style={{ margin: 0 }}>{message}</p>}
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
