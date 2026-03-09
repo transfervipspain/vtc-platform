@@ -20,7 +20,22 @@ type Props = {
   drivers: Driver[];
   vehicles: Vehicle[];
 };
+function getWeekdayLabel(dateString: string) {
+  if (!dateString) return "";
 
+  const date = new Date(dateString);
+  const weekdays = [
+    "Domingo",
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+  ];
+
+  return weekdays[date.getDay()];
+}
 export default function DailyOperationForm({
   companyId,
   drivers,
@@ -138,12 +153,16 @@ export default function DailyOperationForm({
         <div>
           <label>Fecha</label>
           <input
-            type="date"
-            value={operationDate}
-            onChange={(e) => setOperationDate(e.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
-            required
-          />
+  type="date"
+  value={operationDate}
+  onChange={(e) => {
+    const value = e.target.value;
+    setOperationDate(value);
+    setWeekdayLabel(getWeekdayLabel(value));
+  }}
+  style={{ width: "100%", padding: 8, marginTop: 4 }}
+  required
+/>
         </div>
 
         <div>
