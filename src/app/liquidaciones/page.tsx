@@ -1,3 +1,4 @@
+import Form from "next/form";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +19,15 @@ function getEndOfWeek(start: Date) {
   return end;
 }
 
-export default async function LiquidacionesPage() {
-  const today = new Date();
-  const startWeek = getStartOfWeek(today);
+export default async function LiquidacionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
+  const params = await searchParams;
+
+  const selectedDate = params.date ? new Date(params.date) : new Date();
+  const startWeek = getStartOfWeek(selectedDate);
   const endWeek = getEndOfWeek(startWeek);
 
   const operations = await prisma.dailyOperation.findMany({
@@ -111,8 +118,38 @@ export default async function LiquidacionesPage() {
     >
       <h1 style={{ marginBottom: 8 }}>Liquidaciones</h1>
 
+      <Form action="" style={{ marginBottom: 20 }}>
+        <label style={{ marginRight: 10 }}>Seleccionar fecha:</label>
+
+        <input
+          type="date"
+          name="date"
+          defaultValue={params.date ?? selectedDate.toISOString().split("T")[0]}
+          style={{
+            padding: 6,
+            border: "1px solid #ccc",
+            borderRadius: 6,
+          }}
+        />
+
+        <button
+          type="submit"
+          style={{
+            marginLeft: 10,
+            padding: "6px 12px",
+            background: "#111",
+            color: "white",
+            border: "none",
+            borderRadius: 6,
+            cursor: "pointer",
+          }}
+        >
+          Ver semana
+        </button>
+      </Form>
+
       <p style={{ marginBottom: 24, color: "#555" }}>
-        Semana actual: {startWeek.toLocaleDateString("es-ES")} -{" "}
+        Semana: {startWeek.toLocaleDateString("es-ES")} -{" "}
         {endWeek.toLocaleDateString("es-ES")}
       </p>
 
@@ -167,10 +204,22 @@ export default async function LiquidacionesPage() {
                   <td style={{ padding: "10px 12px" }}>
                     {row.baseLiquidable.toFixed(2)} €
                   </td>
-                  <td style={{ padding: "10px 12px", color: "#27ae60", fontWeight: "bold" }}>
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      color: "#27ae60",
+                      fontWeight: "bold",
+                    }}
+                  >
                     {row.driverPayment.toFixed(2)} €
                   </td>
-                  <td style={{ padding: "10px 12px", color: "#2980b9", fontWeight: "bold" }}>
+                  <td
+                    style={{
+                      padding: "10px 12px",
+                      color: "#2980b9",
+                      fontWeight: "bold",
+                    }}
+                  >
                     {row.companyMargin.toFixed(2)} €
                   </td>
                 </tr>
