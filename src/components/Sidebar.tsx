@@ -41,6 +41,7 @@ const links = [
     label: "Agenda diaria",
     icon: Calendar,
   },
+{ href: "/liquidaciones", label: "Liquidaciones", icon: LayoutDashboard },
 ];
 
 export default function Sidebar() {
