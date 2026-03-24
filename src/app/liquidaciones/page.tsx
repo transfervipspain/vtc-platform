@@ -98,6 +98,21 @@ function formatDate(date: Date) {
   }
 
   const rows = Array.from(grouped.entries()).map(([driverId, data]) => {
+    const totals = rows.reduce(
+  (acc, row) => {
+    acc.totalGenerated += row.totalGenerated;
+    acc.energyCost += row.energyCost;
+    acc.driverPayment += row.driverPayment;
+    acc.companyMargin += row.companyMargin;
+    return acc;
+  },
+  {
+    totalGenerated: 0,
+    energyCost: 0,
+    driverPayment: 0,
+    companyMargin: 0,
+  }
+);
     const totalGenerated = data.platformIncome + data.privateIncome;
     const baseLiquidable = totalGenerated - data.energyCost;
     const driverPayment = baseLiquidable * 0.4;
@@ -115,6 +130,25 @@ function formatDate(date: Date) {
       companyMargin,
     };
   });
+
+const cardStyle = {
+  background: "white",
+  border: "1px solid #ddd",
+  borderRadius: 12,
+  padding: 16,
+  boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
+};
+
+const cardTitle = {
+  fontSize: 13,
+  color: "#666",
+  marginBottom: 6,
+};
+
+const cardValue = {
+  fontSize: 20,
+  fontWeight: "bold",
+};
 
   return (
     <main
@@ -186,6 +220,42 @@ function formatDate(date: Date) {
 
       <p style={{ marginBottom: 24, color: "#555" }}>
         Semana: {startWeek.toLocaleDateString("es-ES")} -{" "}
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+    gap: 16,
+    marginBottom: 24,
+  }}
+>
+  <div style={cardStyle}>
+    <div style={cardTitle}>Facturación total</div>
+    <div style={cardValue}>
+      {totals.totalGenerated.toFixed(2)} €
+    </div>
+  </div>
+
+  <div style={cardStyle}>
+    <div style={cardTitle}>Coste energía</div>
+    <div style={cardValue}>
+      {totals.energyCost.toFixed(2)} €
+    </div>
+  </div>
+
+  <div style={cardStyle}>
+    <div style={cardTitle}>Pago conductores</div>
+    <div style={{ ...cardValue, color: "#27ae60" }}>
+      {totals.driverPayment.toFixed(2)} €
+    </div>
+  </div>
+
+  <div style={cardStyle}>
+    <div style={cardTitle}>Margen empresa</div>
+    <div style={{ ...cardValue, color: "#2980b9" }}>
+      {totals.companyMargin.toFixed(2)} €
+    </div>
+  </div>
+</div>
         {endWeek.toLocaleDateString("es-ES")}
       </p>
 
