@@ -27,6 +27,15 @@ export default async function LiquidacionesPage({
   const params = await searchParams;
 
   const selectedDate = params.date ? new Date(params.date) : new Date();
+const prevWeek = new Date(selectedDate);
+prevWeek.setDate(prevWeek.getDate() - 7);
+
+const nextWeek = new Date(selectedDate);
+nextWeek.setDate(nextWeek.getDate() + 7);
+
+function formatDate(date: Date) {
+  return date.toISOString().split("T")[0];
+}
   const startWeek = getStartOfWeek(selectedDate);
   const endWeek = getEndOfWeek(startWeek);
 
@@ -119,6 +128,33 @@ export default async function LiquidacionesPage({
       <h1 style={{ marginBottom: 8 }}>Liquidaciones</h1>
 
       <Form action="" style={{ marginBottom: 20 }}>
+<div style={{ marginBottom: 20, display: "flex", gap: 10 }}>
+  <a
+    href={`/liquidaciones?date=${formatDate(prevWeek)}`}
+    style={{
+      padding: "6px 12px",
+      background: "#eee",
+      borderRadius: 6,
+      textDecoration: "none",
+      color: "#333",
+    }}
+  >
+    ⬅ Semana anterior
+  </a>
+
+  <a
+    href={`/liquidaciones?date=${formatDate(nextWeek)}`}
+    style={{
+      padding: "6px 12px",
+      background: "#eee",
+      borderRadius: 6,
+      textDecoration: "none",
+      color: "#333",
+    }}
+  >
+    Semana siguiente ➡
+  </a>
+</div>
         <label style={{ marginRight: 10 }}>Seleccionar fecha:</label>
 
         <input
