@@ -19,6 +19,10 @@ function getEndOfWeek(start: Date) {
   return end;
 }
 
+function formatDate(date: Date) {
+  return date.toISOString().split("T")[0];
+}
+
 export default async function LiquidacionesPage({
   searchParams,
 }: {
@@ -27,15 +31,13 @@ export default async function LiquidacionesPage({
   const params = await searchParams;
 
   const selectedDate = params.date ? new Date(params.date) : new Date();
-const prevWeek = new Date(selectedDate);
-prevWeek.setDate(prevWeek.getDate() - 7);
 
-const nextWeek = new Date(selectedDate);
-nextWeek.setDate(nextWeek.getDate() + 7);
+  const prevWeek = new Date(selectedDate);
+  prevWeek.setDate(prevWeek.getDate() - 7);
 
-function formatDate(date: Date) {
-  return date.toISOString().split("T")[0];
-}
+  const nextWeek = new Date(selectedDate);
+  nextWeek.setDate(nextWeek.getDate() + 7);
+
   const startWeek = getStartOfWeek(selectedDate);
   const endWeek = getEndOfWeek(startWeek);
 
@@ -98,21 +100,6 @@ function formatDate(date: Date) {
   }
 
   const rows = Array.from(grouped.entries()).map(([driverId, data]) => {
-    const totals = rows.reduce(
-  (acc, row) => {
-    acc.totalGenerated += row.totalGenerated;
-    acc.energyCost += row.energyCost;
-    acc.driverPayment += row.driverPayment;
-    acc.companyMargin += row.companyMargin;
-    return acc;
-  },
-  {
-    totalGenerated: 0,
-    energyCost: 0,
-    driverPayment: 0,
-    companyMargin: 0,
-  }
-);
     const totalGenerated = data.platformIncome + data.privateIncome;
     const baseLiquidable = totalGenerated - data.energyCost;
     const driverPayment = baseLiquidable * 0.4;
@@ -131,24 +118,40 @@ function formatDate(date: Date) {
     };
   });
 
-const cardStyle = {
-  background: "white",
-  border: "1px solid #ddd",
-  borderRadius: 12,
-  padding: 16,
-  boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-};
+  const totals = rows.reduce(
+    (acc, row) => {
+      acc.totalGenerated += row.totalGenerated;
+      acc.energyCost += row.energyCost;
+      acc.driverPayment += row.driverPayment;
+      acc.companyMargin += row.companyMargin;
+      return acc;
+    },
+    {
+      totalGenerated: 0,
+      energyCost: 0,
+      driverPayment: 0,
+      companyMargin: 0,
+    }
+  );
 
-const cardTitle = {
-  fontSize: 13,
-  color: "#666",
-  marginBottom: 6,
-};
+  const cardStyle = {
+    background: "white",
+    border: "1px solid #ddd",
+    borderRadius: 12,
+    padding: 16,
+    boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
+  };
 
-const cardValue = {
-  fontSize: 20,
-  fontWeight: "bold",
-};
+  const cardTitle = {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 6,
+  };
+
+  const cardValue = {
+    fontSize: 20,
+    fontWeight: "bold" as const,
+  };
 
   return (
     <main
@@ -161,34 +164,35 @@ const cardValue = {
     >
       <h1 style={{ marginBottom: 8 }}>Liquidaciones</h1>
 
-      <Form action="" style={{ marginBottom: 20 }}>
-<div style={{ marginBottom: 20, display: "flex", gap: 10 }}>
-  <a
-    href={`/liquidaciones?date=${formatDate(prevWeek)}`}
-    style={{
-      padding: "6px 12px",
-      background: "#eee",
-      borderRadius: 6,
-      textDecoration: "none",
-      color: "#333",
-    }}
-  >
-    ⬅ Semana anterior
-  </a>
+      <div style={{ marginBottom: 20, display: "flex", gap: 10 }}>
+        <a
+          href={`/liquidaciones?date=${formatDate(prevWeek)}`}
+          style={{
+            padding: "6px 12px",
+            background: "#eee",
+            borderRadius: 6,
+            textDecoration: "none",
+            color: "#333",
+          }}
+        >
+          ⬅ Semana anterior
+        </a>
 
-  <a
-    href={`/liquidaciones?date=${formatDate(nextWeek)}`}
-    style={{
-      padding: "6px 12px",
-      background: "#eee",
-      borderRadius: 6,
-      textDecoration: "none",
-      color: "#333",
-    }}
-  >
-    Semana siguiente ➡
-  </a>
-</div>
+        <a
+          href={`/liquidaciones?date=${formatDate(nextWeek)}`}
+          style={{
+            padding: "6px 12px",
+            background: "#eee",
+            borderRadius: 6,
+            textDecoration: "none",
+            color: "#333",
+          }}
+        >
+          Semana siguiente ➡
+        </a>
+      </div>
+
+      <Form action="" style={{ marginBottom: 20 }}>
         <label style={{ marginRight: 10 }}>Seleccionar fecha:</label>
 
         <input
@@ -220,44 +224,41 @@ const cardValue = {
 
       <p style={{ marginBottom: 24, color: "#555" }}>
         Semana: {startWeek.toLocaleDateString("es-ES")} -{" "}
-<div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: 16,
-    marginBottom: 24,
-  }}
->
-  <div style={cardStyle}>
-    <div style={cardTitle}>Facturación total</div>
-    <div style={cardValue}>
-      {totals.totalGenerated.toFixed(2)} €
-    </div>
-  </div>
-
-  <div style={cardStyle}>
-    <div style={cardTitle}>Coste energía</div>
-    <div style={cardValue}>
-      {totals.energyCost.toFixed(2)} €
-    </div>
-  </div>
-
-  <div style={cardStyle}>
-    <div style={cardTitle}>Pago conductores</div>
-    <div style={{ ...cardValue, color: "#27ae60" }}>
-      {totals.driverPayment.toFixed(2)} €
-    </div>
-  </div>
-
-  <div style={cardStyle}>
-    <div style={cardTitle}>Margen empresa</div>
-    <div style={{ ...cardValue, color: "#2980b9" }}>
-      {totals.companyMargin.toFixed(2)} €
-    </div>
-  </div>
-</div>
         {endWeek.toLocaleDateString("es-ES")}
       </p>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: 16,
+          marginBottom: 24,
+        }}
+      >
+        <div style={cardStyle}>
+          <div style={cardTitle}>Facturación total</div>
+          <div style={cardValue}>{totals.totalGenerated.toFixed(2)} €</div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Coste energía</div>
+          <div style={cardValue}>{totals.energyCost.toFixed(2)} €</div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Pago conductores</div>
+          <div style={{ ...cardValue, color: "#27ae60" }}>
+            {totals.driverPayment.toFixed(2)} €
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Margen empresa</div>
+          <div style={{ ...cardValue, color: "#2980b9" }}>
+            {totals.companyMargin.toFixed(2)} €
+          </div>
+        </div>
+      </div>
 
       {rows.length === 0 ? (
         <p>No hay operaciones esta semana.</p>
