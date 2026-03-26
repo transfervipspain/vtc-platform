@@ -7,6 +7,7 @@ type Props = {
   initialPhone: string | null;
   initialEmail: string | null;
   initialLicensePoints: number | null;
+  initialCommission: number | null;
 };
 
 export default function EditDriverForm({
@@ -14,6 +15,7 @@ export default function EditDriverForm({
   initialPhone,
   initialEmail,
   initialLicensePoints,
+  initialCommission,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [phone, setPhone] = useState(initialPhone ?? "");
@@ -21,11 +23,12 @@ export default function EditDriverForm({
   const [licensePoints, setLicensePoints] = useState(
     initialLicensePoints?.toString() ?? ""
   );
+  const [commission, setCommission] = useState(
+    initialCommission?.toString() ?? "40"
+  );
   const [message, setMessage] = useState("");
 
   async function handleSave() {
-    setMessage("Guardando...");
-
     const res = await fetch("/api/drivers/update", {
       method: "POST",
       headers: {
@@ -36,40 +39,12 @@ export default function EditDriverForm({
         phone,
         email,
         licensePoints,
+        commissionPercentage: Number(commission),
       }),
     });
 
-    const data = await res.json();
-
     if (!res.ok) {
-      setMessage(data.error || "Error al guardar");
-      return;
-    }
-
-    window.location.reload();
-  }
-
-  async function handleDelete() {
-    const confirmed = window.confirm(
-      "¿Seguro que quieres eliminar este conductor? Solo se podrá borrar si no tiene historial."
-    );
-
-    if (!confirmed) return;
-
-    const res = await fetch("/api/drivers/delete", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        driverId,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      setMessage(data.error || "Error al eliminar");
+      setMessage("Error guardando");
       return;
     }
 
@@ -113,40 +88,87 @@ export default function EditDriverForm({
               padding: 20,
               boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
               display: "grid",
-              gap: 12,
+              gap: 14,
             }}
           >
             <h3 style={{ margin: 0 }}>Editar conductor</h3>
 
+            {/* TELÉFONO */}
             <div>
-              <label>Teléfono</label>
+              <label style={{ fontSize: 13, color: "#555" }}>
+                Teléfono
+              </label>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                style={{ width: "100%", padding: 8, marginTop: 4 }}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  marginTop: 4,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                }}
               />
             </div>
 
+            {/* EMAIL */}
             <div>
-              <label>Email</label>
+              <label style={{ fontSize: 13, color: "#555" }}>
+                Email
+              </label>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                style={{ width: "100%", padding: 8, marginTop: 4 }}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  marginTop: 4,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                }}
               />
             </div>
 
+            {/* PUNTOS */}
             <div>
-              <label>Puntos carnet</label>
+              <label style={{ fontSize: 13, color: "#555" }}>
+                Puntos del carnet
+              </label>
               <input
                 type="number"
                 value={licensePoints}
                 onChange={(e) => setLicensePoints(e.target.value)}
-                style={{ width: "100%", padding: 8, marginTop: 4 }}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  marginTop: 4,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                }}
               />
             </div>
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {/* COMISIÓN */}
+            <div>
+              <label style={{ fontSize: 13, color: "#555" }}>
+                % Comisión conductor
+              </label>
+              <input
+                type="number"
+                value={commission}
+                onChange={(e) => setCommission(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 8,
+                  marginTop: 4,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                }}
+              />
+            </div>
+
+            {/* BOTONES */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button
                 onClick={handleSave}
                 style={{
@@ -173,20 +195,6 @@ export default function EditDriverForm({
                 }}
               >
                 Cancelar
-              </button>
-
-              <button
-                onClick={handleDelete}
-                style={{
-                  background: "#c0392b",
-                  color: "white",
-                  border: "none",
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                }}
-              >
-                Eliminar conductor
               </button>
             </div>
 

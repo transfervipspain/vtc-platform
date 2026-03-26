@@ -102,11 +102,12 @@ const drivers = await prisma.driver.findMany({
                 isActive={driver.isActive}
               />
 
-             <EditDriverForm
+            <EditDriverForm
   driverId={driver.id}
   initialPhone={driver.phone}
   initialEmail={driver.email}
   initialLicensePoints={driver.licensePoints}
+  initialCommission={driver.commissionPercentage}
 />
             </div>
           </td>

@@ -1,4 +1,3 @@
-import Form from "next/form";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -24,14 +23,17 @@ function formatDate(date: Date) {
   return date.toISOString().split("T")[0];
 }
 
-export default async function LiquidacionesPage({
+export default async function LiquidacionConductorPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ driverId: string }>;
   searchParams: Promise<{ date?: string }>;
 }) {
-  const params = await searchParams;
+  const { driverId } = await params;
+  const query = await searchParams;
 
-  const selectedDate = params.date ? new Date(params.date) : new Date();
+  const selectedDate = query.date ? new Date(query.date) : new Date();
 
   const prevWeek = new Date(selectedDate);
   prevWeek.setDate(prevWeek.getDate() - 7);
@@ -42,81 +44,85 @@ export default async function LiquidacionesPage({
   const startWeek = getStartOfWeek(selectedDate);
   const endWeek = getEndOfWeek(startWeek);
 
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+    include: {
+      defaultVehicle: true,
+    },
+  });
+
+  if (!driver) {
+    return (
+      <main style={{ padding: 32, fontFamily: "Arial" }}>
+        <h1>Conductor no encontrado</h1>
+      </main>
+    );
+  }
+
   const operations = await prisma.dailyOperation.findMany({
     where: {
+      driverId,
       operationDate: {
         gte: startWeek,
         lte: endWeek,
       },
     },
     include: {
-      driver: true,
+      vehicle: true,
       vehicleEnergyLog: true,
-      platformIncomes: true,
       privateIncomeSummary: true,
+      platformIncomes: {
+        include: {
+          platform: true,
+        },
+      },
     },
     orderBy: {
       operationDate: "asc",
     },
   });
 
-  const grouped = new Map<
-    string,
-    {
-      driverName: string;
-      commissionPercentage: number;
-      platformIncome: number;
-      privateIncome: number;
-      energyCost: number;
-    }
-  >();
+  const rows = operations.map((op) => {
+    const boltAmount =
+      op.platformIncomes.find(
+        (i) => i.platform?.name?.toLowerCase() === "bolt"
+      )?.grossAmount ?? 0;
 
-  for (const op of operations) {
-    const driverId = op.driverId;
+    const uberAmount =
+      op.platformIncomes.find(
+        (i) => i.platform?.name?.toLowerCase() === "uber"
+      )?.grossAmount ?? 0;
 
-    const platformIncome = op.platformIncomes.reduce(
-      (sum, income) => sum + income.grossAmount,
-      0
-    );
+    const cabifyAmount =
+      op.platformIncomes.find(
+        (i) => i.platform?.name?.toLowerCase() === "cabify"
+      )?.grossAmount ?? 0;
 
-    const privateIncome = op.privateIncomeSummary?.grossAmount ?? 0;
+    const privateAmount = op.privateIncomeSummary?.grossAmount ?? 0;
+
+    const totalGenerated =
+      boltAmount + uberAmount + cabifyAmount + privateAmount;
 
     const energyCost =
       op.vehicleEnergyLog?.electricCost ??
       op.vehicleEnergyLog?.fuelCost ??
       0;
 
-    if (!grouped.has(driverId)) {
-      grouped.set(driverId, {
-        driverName: op.driver.fullName,
-        commissionPercentage: op.driver.commissionPercentage,
-        platformIncome: 0,
-        privateIncome: 0,
-        energyCost: 0,
-      });
-    }
-
-    const current = grouped.get(driverId)!;
-    current.platformIncome += platformIncome;
-    current.privateIncome += privateIncome;
-    current.energyCost += energyCost;
-  }
-
-  const rows = Array.from(grouped.entries()).map(([driverId, data]) => {
-    const totalGenerated = data.platformIncome + data.privateIncome;
-    const baseLiquidable = totalGenerated - data.energyCost;
-    const commission = data.commissionPercentage / 100;
+    const baseLiquidable = totalGenerated - energyCost;
+    const commission = driver.commissionPercentage / 100;
     const driverPayment = baseLiquidable * commission;
     const companyMargin = baseLiquidable * (1 - commission);
 
     return {
-      driverId,
-      driverName: data.driverName,
-      commissionPercentage: data.commissionPercentage,
-      platformIncome: data.platformIncome,
-      privateIncome: data.privateIncome,
+      id: op.id,
+      date: op.operationDate,
+      vehiclePlate: op.vehicle.plateNumber,
+      boltAmount,
+      uberAmount,
+      cabifyAmount,
+      privateAmount,
       totalGenerated,
-      energyCost: data.energyCost,
+      energyCost,
       baseLiquidable,
       driverPayment,
       companyMargin,
@@ -163,80 +169,70 @@ export default async function LiquidacionesPage({
       style={{
         padding: 32,
         fontFamily: "Arial",
-        maxWidth: 1280,
+        maxWidth: 1400,
         margin: "0 auto",
       }}
     >
-      <h1 style={{ marginBottom: 8 }}>Liquidaciones</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div>
+          <h1 style={{ marginBottom: 8 }}>Liquidación individual</h1>
+          <p style={{ margin: 0, color: "#555" }}>
+            {driver.fullName} · Comisión: {driver.commissionPercentage.toFixed(0)}%
+          </p>
+          <p style={{ marginTop: 8, color: "#555" }}>
+            Semana: {startWeek.toLocaleDateString("es-ES")} -{" "}
+            {endWeek.toLocaleDateString("es-ES")}
+          </p>
+        </div>
 
-      <div style={{ marginBottom: 20, display: "flex", gap: 10 }}>
-        <a
-          href={`/liquidaciones?date=${formatDate(prevWeek)}`}
-          style={{
-            padding: "6px 12px",
-            background: "#eee",
-            borderRadius: 6,
-            textDecoration: "none",
-            color: "#333",
-          }}
-        >
-          ⬅ Semana anterior
-        </a>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <Link
+            href={`/liquidaciones?date=${query.date ?? formatDate(selectedDate)}`}
+            style={{
+              padding: "8px 12px",
+              borderRadius: 6,
+              background: "#111",
+              color: "white",
+              textDecoration: "none",
+            }}
+          >
+            Volver
+          </Link>
 
-        <a
-          href={`/liquidaciones?date=${formatDate(nextWeek)}`}
-          style={{
-            padding: "6px 12px",
-            background: "#eee",
-            borderRadius: 6,
-            textDecoration: "none",
-            color: "#333",
-          }}
-        >
-          Semana siguiente ➡
-        </a>
+          <a
+            href={`/liquidaciones/${driverId}?date=${formatDate(prevWeek)}`}
+            style={{
+              padding: "8px 12px",
+              background: "#eee",
+              borderRadius: 6,
+              textDecoration: "none",
+              color: "#333",
+            }}
+          >
+            ⬅ Semana anterior
+          </a>
+
+          <a
+            href={`/liquidaciones/${driverId}?date=${formatDate(nextWeek)}`}
+            style={{
+              padding: "8px 12px",
+              background: "#eee",
+              borderRadius: 6,
+              textDecoration: "none",
+              color: "#333",
+            }}
+          >
+            Semana siguiente ➡
+          </a>
+        </div>
       </div>
-
-      <Form action="" style={{ marginBottom: 20 }}>
-        <label style={{ marginRight: 10 }}>Seleccionar fecha:</label>
-
-        <input
-          type="date"
-          name="date"
-          defaultValue={params.date ?? selectedDate.toISOString().split("T")[0]}
-          style={{
-            padding: 6,
-            border: "1px solid #ccc",
-            borderRadius: 6,
-          }}
-        />
-
-        <button
-          type="submit"
-          style={{
-            marginLeft: 10,
-            padding: "6px 12px",
-            background: "#111",
-            color: "white",
-            border: "none",
-            borderRadius: 6,
-            cursor: "pointer",
-          }}
-        >
-          Ver semana
-        </button>
-      </Form>
-
-      <p style={{ marginBottom: 24, color: "#555" }}>
-        Semana: {startWeek.toLocaleDateString("es-ES")} -{" "}
-        {endWeek.toLocaleDateString("es-ES")}
-      </p>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           gap: 16,
+          marginTop: 24,
           marginBottom: 24,
         }}
       >
@@ -251,7 +247,7 @@ export default async function LiquidacionesPage({
         </div>
 
         <div style={cardStyle}>
-          <div style={cardTitle}>Pago conductores</div>
+          <div style={cardTitle}>Pago conductor</div>
           <div style={{ ...cardValue, color: "#27ae60" }}>
             {totals.driverPayment.toFixed(2)} €
           </div>
@@ -266,7 +262,7 @@ export default async function LiquidacionesPage({
       </div>
 
       {rows.length === 0 ? (
-        <p>No hay operaciones esta semana.</p>
+        <p>No hay operaciones para este conductor en la semana seleccionada.</p>
       ) : (
         <div
           style={{
@@ -285,32 +281,39 @@ export default async function LiquidacionesPage({
           >
             <thead>
               <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-                <th style={{ padding: "10px 12px" }}>Conductor</th>
-                <th style={{ padding: "10px 12px" }}>% comisión</th>
-                <th style={{ padding: "10px 12px" }}>Plataformas</th>
+                <th style={{ padding: "10px 12px" }}>Fecha</th>
+                <th style={{ padding: "10px 12px" }}>Vehículo</th>
+                <th style={{ padding: "10px 12px" }}>Bolt</th>
+                <th style={{ padding: "10px 12px" }}>Uber</th>
+                <th style={{ padding: "10px 12px" }}>Cabify</th>
                 <th style={{ padding: "10px 12px" }}>Privados</th>
                 <th style={{ padding: "10px 12px" }}>Total generado</th>
                 <th style={{ padding: "10px 12px" }}>Energía</th>
                 <th style={{ padding: "10px 12px" }}>Base liquidable</th>
                 <th style={{ padding: "10px 12px" }}>Pago conductor</th>
                 <th style={{ padding: "10px 12px" }}>Margen empresa</th>
-                <th style={{ padding: "10px 12px" }}>Detalle</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.driverId} style={{ borderTop: "1px solid #e5e5e5" }}>
+                <tr key={row.id} style={{ borderTop: "1px solid #e5e5e5" }}>
+                  <td style={{ padding: "10px 12px" }}>
+                    {new Date(row.date).toLocaleDateString("es-ES")}
+                  </td>
                   <td style={{ padding: "10px 12px", fontWeight: "bold" }}>
-                    {row.driverName}
+                    {row.vehiclePlate}
                   </td>
                   <td style={{ padding: "10px 12px" }}>
-                    {row.commissionPercentage.toFixed(0)}%
+                    {row.boltAmount.toFixed(2)} €
                   </td>
                   <td style={{ padding: "10px 12px" }}>
-                    {row.platformIncome.toFixed(2)} €
+                    {row.uberAmount.toFixed(2)} €
                   </td>
                   <td style={{ padding: "10px 12px" }}>
-                    {row.privateIncome.toFixed(2)} €
+                    {row.cabifyAmount.toFixed(2)} €
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    {row.privateAmount.toFixed(2)} €
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     {row.totalGenerated.toFixed(2)} €
@@ -338,23 +341,6 @@ export default async function LiquidacionesPage({
                     }}
                   >
                     {row.companyMargin.toFixed(2)} €
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    <Link
-                      href={`/liquidaciones/${row.driverId}?date=${
-                        params.date ?? formatDate(selectedDate)
-                      }`}
-                      style={{
-                        display: "inline-block",
-                        padding: "6px 10px",
-                        borderRadius: 6,
-                        background: "#111",
-                        color: "white",
-                        textDecoration: "none",
-                      }}
-                    >
-                      Ver detalle
-                    </Link>
                   </td>
                 </tr>
               ))}
