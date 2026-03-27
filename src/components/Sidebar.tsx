@@ -1,5 +1,5 @@
 "use client";
-
+import { DollarSign } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 const links = [
-  {
+ {
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
@@ -41,6 +41,11 @@ const links = [
     label: "Agenda diaria",
     icon: Calendar,
   },
+  {
+    href: "/gastos",
+    label: "Gastos",
+    icon: DollarSign,
+  }, 
 { href: "/liquidaciones", label: "Liquidaciones", icon: LayoutDashboard },
 ];
 

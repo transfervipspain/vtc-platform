@@ -21,26 +21,35 @@ model Company {
   platforms       Platform[]
   dailyOperations DailyOperation[]
   privateTrips    PrivateTrip[]
+  expenses        CompanyExpense[]
 }
 
 model Driver {
-  id                   String   @id @default(cuid())
-  companyId            String
-  firstName            String
-  lastName             String
-  fullName             String
+  id        String @id @default(cuid())
+  companyId String
+
+  firstName String
+  lastName  String
+  fullName  String
+
   phone                String?
   email                String?
   nationalId           String?
   drivingLicenseNumber String?
   licensePoints        Int?
   hireDate             DateTime?
-  isActive             Boolean  @default(true)
+  isActive             Boolean   @default(true)
   notes                String?
+
   defaultVehicleId     String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  commissionPercentage Float @default(40)
+  commissionPercentage Float   @default(40)
+  fixedSalaryMonthly   Float   @default(0)
+  commissionMode       String  @default("weekly")
+  commissionThreshold  Float   @default(0)
+  commissionEnabled    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   dailyOperations DailyOperation[]
@@ -60,7 +69,7 @@ model Vehicle {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   dailyOperations DailyOperation[]
   privateTrips    PrivateTrip[]
   defaultDrivers  Driver[]
@@ -93,12 +102,12 @@ model DailyOperation {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company               Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  driver                Driver                     @relation(fields: [driverId], references: [id], onDelete: Cascade)
-  vehicle               Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  platformIncomes       DailyPlatformIncome[]
-  privateIncomeSummary  DailyPrivateIncomeSummary?
-  vehicleEnergyLog      VehicleEnergyLog?
+  company              Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  driver               Driver                     @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle              Vehicle                    @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  platformIncomes      DailyPlatformIncome[]
+  privateIncomeSummary DailyPrivateIncomeSummary?
+  vehicleEnergyLog     VehicleEnergyLog?
 
   @@unique([companyId, driverId, vehicleId, operationDate])
 }
@@ -147,31 +156,52 @@ model VehicleEnergyLog {
 }
 
 model PrivateTrip {
-  id              String   @id @default(cuid())
-  companyId       String
-  driverId        String?
-  vehicleId       String?
-  weekLabel       String?
-  serviceDate     DateTime
-  serviceTime     String?
-  amount          Float
-  sourcePlatform  String?
-  isLuxucar       Boolean  @default(false)
-  isCash          Boolean  @default(false)
-  isCard          Boolean  @default(false)
+  id             String   @id @default(cuid())
+  companyId      String
+  driverId       String?
+  vehicleId      String?
+  weekLabel      String?
+  serviceDate    DateTime
+  serviceTime    String?
+  amount         Float
+  sourcePlatform String?
+  isLuxucar      Boolean  @default(false)
+  isCash         Boolean  @default(false)
+  isCard         Boolean  @default(false)
 
-  origin          String?
-  stops           String?
-  destination     String?
+  origin      String?
+  stops       String?
+  destination String?
 
-  intermediary    String?
-  communicator    String?
-  status          String   @default("pending")
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  intermediary String?
+  communicator String?
+  status       String   @default("pending")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  driver  Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+}
+
+model CompanyExpense {
+  id        String @id @default(cuid())
+  companyId String
+
+  concept     String
+  category    String
+  amount      Float
+  expenseDate DateTime
+
+  type      String @default("fixed") // fixed | variable
+  frequency String @default("monthly") // one-time | weekly | monthly | yearly
+
+  notes    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  driver  Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
-  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
 }

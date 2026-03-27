@@ -20,8 +20,24 @@ function getEndOfWeek(start: Date) {
   return end;
 }
 
+function getStartOfMonth(date: Date) {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getEndOfMonth(date: Date) {
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
 function formatDate(date: Date) {
   return date.toISOString().split("T")[0];
+}
+
+function isDateInRange(date: Date, start: Date, end: Date) {
+  return date >= start && date <= end;
 }
 
 export default async function LiquidacionesPage({
@@ -30,23 +46,38 @@ export default async function LiquidacionesPage({
   searchParams: Promise<{ date?: string }>;
 }) {
   const params = await searchParams;
-
   const selectedDate = params.date ? new Date(params.date) : new Date();
 
-  const prevWeek = new Date(selectedDate);
-  prevWeek.setDate(prevWeek.getDate() - 7);
+  const prevDate = new Date(selectedDate);
+  prevDate.setDate(prevDate.getDate() - 7);
 
-  const nextWeek = new Date(selectedDate);
-  nextWeek.setDate(nextWeek.getDate() + 7);
+  const nextDate = new Date(selectedDate);
+  nextDate.setDate(nextDate.getDate() + 7);
 
-  const startWeek = getStartOfWeek(selectedDate);
-  const endWeek = getEndOfWeek(startWeek);
+  const globalStart = getStartOfWeek(
+    getStartOfMonth(selectedDate) < getStartOfWeek(selectedDate)
+      ? getStartOfMonth(selectedDate)
+      : getStartOfWeek(selectedDate)
+  );
+
+  const globalEnd = getEndOfMonth(selectedDate) > getEndOfWeek(getStartOfWeek(selectedDate))
+    ? getEndOfMonth(selectedDate)
+    : getEndOfWeek(getStartOfWeek(selectedDate));
+
+  const drivers = await prisma.driver.findMany({
+    where: {
+      isActive: true,
+    },
+    orderBy: {
+      fullName: "asc",
+    },
+  });
 
   const operations = await prisma.dailyOperation.findMany({
     where: {
       operationDate: {
-        gte: startWeek,
-        lte: endWeek,
+        gte: globalStart,
+        lte: globalEnd,
       },
     },
     include: {
@@ -60,66 +91,78 @@ export default async function LiquidacionesPage({
     },
   });
 
-  const grouped = new Map<
-    string,
-    {
-      driverName: string;
-      commissionPercentage: number;
-      platformIncome: number;
-      privateIncome: number;
-      energyCost: number;
-    }
-  >();
+  const rows = drivers.map((driver) => {
+    const periodStart =
+      driver.commissionMode === "monthly"
+        ? getStartOfMonth(selectedDate)
+        : getStartOfWeek(selectedDate);
 
-  for (const op of operations) {
-    const driverId = op.driverId;
+    const periodEnd =
+      driver.commissionMode === "monthly"
+        ? getEndOfMonth(selectedDate)
+        : getEndOfWeek(periodStart);
 
-    const platformIncome = op.platformIncomes.reduce(
-      (sum, income) => sum + income.grossAmount,
-      0
+    const driverOperations = operations.filter(
+      (op) =>
+        op.driverId === driver.id &&
+        isDateInRange(op.operationDate, periodStart, periodEnd)
     );
 
-    const privateIncome = op.privateIncomeSummary?.grossAmount ?? 0;
+    const platformIncome = driverOperations.reduce((sum, op) => {
+      return (
+        sum +
+        op.platformIncomes.reduce(
+          (platformSum, income) => platformSum + income.grossAmount,
+          0
+        )
+      );
+    }, 0);
 
-    const energyCost =
-      op.vehicleEnergyLog?.electricCost ??
-      op.vehicleEnergyLog?.fuelCost ??
-      0;
+    const privateIncome = driverOperations.reduce((sum, op) => {
+      return sum + (op.privateIncomeSummary?.grossAmount ?? 0);
+    }, 0);
 
-    if (!grouped.has(driverId)) {
-      grouped.set(driverId, {
-        driverName: op.driver.fullName,
-        commissionPercentage: op.driver.commissionPercentage,
-        platformIncome: 0,
-        privateIncome: 0,
-        energyCost: 0,
-      });
-    }
+    const energyCost = driverOperations.reduce((sum, op) => {
+      return (
+        sum +
+        (op.vehicleEnergyLog?.electricCost ??
+          op.vehicleEnergyLog?.fuelCost ??
+          0)
+      );
+    }, 0);
 
-    const current = grouped.get(driverId)!;
-    current.platformIncome += platformIncome;
-    current.privateIncome += privateIncome;
-    current.energyCost += energyCost;
-  }
-
-  const rows = Array.from(grouped.entries()).map(([driverId, data]) => {
-    const totalGenerated = data.platformIncome + data.privateIncome;
-    const baseLiquidable = totalGenerated - data.energyCost;
-    const commission = data.commissionPercentage / 100;
-    const driverPayment = baseLiquidable * commission;
-    const companyMargin = baseLiquidable * (1 - commission);
+    const totalGenerated = platformIncome + privateIncome;
+    const threshold = driver.commissionEnabled
+      ? driver.commissionThreshold
+      : 0;
+    const excess = driver.commissionEnabled
+      ? Math.max(0, totalGenerated - threshold)
+      : 0;
+    const commissionRate = driver.commissionPercentage / 100;
+    const variableCommission = driver.commissionEnabled
+      ? excess * commissionRate
+      : 0;
+    const fixedSalaryMonthly = driver.fixedSalaryMonthly ?? 0;
+    const totalDriverCost = fixedSalaryMonthly + variableCommission;
+    const companyMargin = totalGenerated - totalDriverCost;
 
     return {
-      driverId,
-      driverName: data.driverName,
-      commissionPercentage: data.commissionPercentage,
-      platformIncome: data.platformIncome,
-      privateIncome: data.privateIncome,
+      driverId: driver.id,
+      driverName: driver.fullName,
+      commissionMode: driver.commissionMode,
+      commissionPercentage: driver.commissionPercentage,
+      threshold,
+      platformIncome,
+      privateIncome,
       totalGenerated,
-      energyCost: data.energyCost,
-      baseLiquidable,
-      driverPayment,
+      energyCost,
+      excess,
+      variableCommission,
+      fixedSalaryMonthly,
+      totalDriverCost,
       companyMargin,
+      periodStart,
+      periodEnd,
     };
   });
 
@@ -127,14 +170,18 @@ export default async function LiquidacionesPage({
     (acc, row) => {
       acc.totalGenerated += row.totalGenerated;
       acc.energyCost += row.energyCost;
-      acc.driverPayment += row.driverPayment;
+      acc.variableCommission += row.variableCommission;
+      acc.fixedSalaryMonthly += row.fixedSalaryMonthly;
+      acc.totalDriverCost += row.totalDriverCost;
       acc.companyMargin += row.companyMargin;
       return acc;
     },
     {
       totalGenerated: 0,
       energyCost: 0,
-      driverPayment: 0,
+      variableCommission: 0,
+      fixedSalaryMonthly: 0,
+      totalDriverCost: 0,
       companyMargin: 0,
     }
   );
@@ -163,7 +210,7 @@ export default async function LiquidacionesPage({
       style={{
         padding: 32,
         fontFamily: "Arial",
-        maxWidth: 1280,
+        maxWidth: 1450,
         margin: "0 auto",
       }}
     >
@@ -171,7 +218,7 @@ export default async function LiquidacionesPage({
 
       <div style={{ marginBottom: 20, display: "flex", gap: 10 }}>
         <a
-          href={`/liquidaciones?date=${formatDate(prevWeek)}`}
+          href={`/liquidaciones?date=${formatDate(prevDate)}`}
           style={{
             padding: "6px 12px",
             background: "#eee",
@@ -180,11 +227,11 @@ export default async function LiquidacionesPage({
             color: "#333",
           }}
         >
-          ⬅ Semana anterior
+          ⬅ Fecha anterior
         </a>
 
         <a
-          href={`/liquidaciones?date=${formatDate(nextWeek)}`}
+          href={`/liquidaciones?date=${formatDate(nextDate)}`}
           style={{
             padding: "6px 12px",
             background: "#eee",
@@ -193,7 +240,7 @@ export default async function LiquidacionesPage({
             color: "#333",
           }}
         >
-          Semana siguiente ➡
+          Fecha siguiente ➡
         </a>
       </div>
 
@@ -203,7 +250,7 @@ export default async function LiquidacionesPage({
         <input
           type="date"
           name="date"
-          defaultValue={params.date ?? selectedDate.toISOString().split("T")[0]}
+          defaultValue={params.date ?? formatDate(selectedDate)}
           style={{
             padding: 6,
             border: "1px solid #ccc",
@@ -223,19 +270,18 @@ export default async function LiquidacionesPage({
             cursor: "pointer",
           }}
         >
-          Ver semana
+          Ver periodo
         </button>
       </Form>
 
       <p style={{ marginBottom: 24, color: "#555" }}>
-        Semana: {startWeek.toLocaleDateString("es-ES")} -{" "}
-        {endWeek.toLocaleDateString("es-ES")}
+        Fecha de referencia: {selectedDate.toLocaleDateString("es-ES")}
       </p>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           gap: 16,
           marginBottom: 24,
         }}
@@ -251,9 +297,21 @@ export default async function LiquidacionesPage({
         </div>
 
         <div style={cardStyle}>
-          <div style={cardTitle}>Pago conductores</div>
+          <div style={cardTitle}>Comisión variable</div>
           <div style={{ ...cardValue, color: "#27ae60" }}>
-            {totals.driverPayment.toFixed(2)} €
+            {totals.variableCommission.toFixed(2)} €
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Sueldos fijos mensuales</div>
+          <div style={cardValue}>{totals.fixedSalaryMonthly.toFixed(2)} €</div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Coste total conductores</div>
+          <div style={{ ...cardValue, color: "#8e44ad" }}>
+            {totals.totalDriverCost.toFixed(2)} €
           </div>
         </div>
 
@@ -265,103 +323,116 @@ export default async function LiquidacionesPage({
         </div>
       </div>
 
-      {rows.length === 0 ? (
-        <p>No hay operaciones esta semana.</p>
-      ) : (
-        <div
+      <div
+        style={{
+          border: "1px solid #ddd",
+          borderRadius: 10,
+          overflow: "hidden",
+          background: "#fafafa",
+        }}
+      >
+        <table
           style={{
-            border: "1px solid #ddd",
-            borderRadius: 10,
-            overflow: "hidden",
-            background: "#fafafa",
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: 14,
           }}
         >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: 14,
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-                <th style={{ padding: "10px 12px" }}>Conductor</th>
-                <th style={{ padding: "10px 12px" }}>% comisión</th>
-                <th style={{ padding: "10px 12px" }}>Plataformas</th>
-                <th style={{ padding: "10px 12px" }}>Privados</th>
-                <th style={{ padding: "10px 12px" }}>Total generado</th>
-                <th style={{ padding: "10px 12px" }}>Energía</th>
-                <th style={{ padding: "10px 12px" }}>Base liquidable</th>
-                <th style={{ padding: "10px 12px" }}>Pago conductor</th>
-                <th style={{ padding: "10px 12px" }}>Margen empresa</th>
-                <th style={{ padding: "10px 12px" }}>Detalle</th>
+          <thead>
+            <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
+              <th style={{ padding: "10px 12px" }}>Conductor</th>
+              <th style={{ padding: "10px 12px" }}>Modo</th>
+              <th style={{ padding: "10px 12px" }}>Periodo</th>
+              <th style={{ padding: "10px 12px" }}>% comisión</th>
+              <th style={{ padding: "10px 12px" }}>Umbral</th>
+              <th style={{ padding: "10px 12px" }}>Facturación</th>
+              <th style={{ padding: "10px 12px" }}>Energía</th>
+              <th style={{ padding: "10px 12px" }}>Exceso</th>
+              <th style={{ padding: "10px 12px" }}>Comisión variable</th>
+              <th style={{ padding: "10px 12px" }}>Sueldo fijo mensual</th>
+              <th style={{ padding: "10px 12px" }}>Coste total conductor</th>
+              <th style={{ padding: "10px 12px" }}>Margen empresa</th>
+              <th style={{ padding: "10px 12px" }}>Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.driverId} style={{ borderTop: "1px solid #e5e5e5" }}>
+                <td style={{ padding: "10px 12px", fontWeight: "bold" }}>
+                  {row.driverName}
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  {row.commissionMode === "monthly" ? "Mensual" : "Semanal"}
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  {row.periodStart.toLocaleDateString("es-ES")} -{" "}
+                  {row.periodEnd.toLocaleDateString("es-ES")}
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  {row.commissionPercentage.toFixed(0)}%
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  {row.threshold.toFixed(2)} €
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  {row.totalGenerated.toFixed(2)} €
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  {row.energyCost.toFixed(2)} €
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  {row.excess.toFixed(2)} €
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    color: "#27ae60",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {row.variableCommission.toFixed(2)} €
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  {row.fixedSalaryMonthly.toFixed(2)} €
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    color: "#8e44ad",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {row.totalDriverCost.toFixed(2)} €
+                </td>
+                <td
+                  style={{
+                    padding: "10px 12px",
+                    color: "#2980b9",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {row.companyMargin.toFixed(2)} €
+                </td>
+                <td style={{ padding: "10px 12px" }}>
+                  <Link
+                    href={`/liquidaciones/${row.driverId}?date=${params.date ?? formatDate(selectedDate)}`}
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      background: "#111",
+                      color: "white",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Ver detalle
+                  </Link>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.driverId} style={{ borderTop: "1px solid #e5e5e5" }}>
-                  <td style={{ padding: "10px 12px", fontWeight: "bold" }}>
-                    {row.driverName}
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    {row.commissionPercentage.toFixed(0)}%
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    {row.platformIncome.toFixed(2)} €
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    {row.privateIncome.toFixed(2)} €
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    {row.totalGenerated.toFixed(2)} €
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    {row.energyCost.toFixed(2)} €
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    {row.baseLiquidable.toFixed(2)} €
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      color: "#27ae60",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {row.driverPayment.toFixed(2)} €
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      color: "#2980b9",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {row.companyMargin.toFixed(2)} €
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    <Link
-                      href={`/liquidaciones/${row.driverId}?date=${
-                        params.date ?? formatDate(selectedDate)
-                      }`}
-                      style={{
-                        display: "inline-block",
-                        padding: "6px 10px",
-                        borderRadius: 6,
-                        background: "#111",
-                        color: "white",
-                        textDecoration: "none",
-                      }}
-                    >
-                      Ver detalle
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }

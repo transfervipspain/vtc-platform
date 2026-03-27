@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Sidebar from "@/components/Sidebar";
+import "@mantine/core/styles.css";
+import { MantineProvider } from "@mantine/core";
 
 export const metadata: Metadata = {
   title: "Transfer Vip Spain",
@@ -14,13 +16,15 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body style={{ margin: 0, fontFamily: "Arial, sans-serif" }}>
-        <div style={{ display: "flex", minHeight: "100vh" }}>
-          <Sidebar />
+        <MantineProvider defaultColorScheme="light">
+          <div style={{ display: "flex", minHeight: "100vh" }}>
+            <Sidebar />
 
-          <div style={{ flex: 1, background: "#fff" }}>
-            {children}
+            <div style={{ flex: 1, background: "#fff" }}>
+              {children}
+            </div>
           </div>
-        </div>
+        </MantineProvider>
       </body>
     </html>
   );

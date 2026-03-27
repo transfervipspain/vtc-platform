@@ -10,6 +10,10 @@ export async function POST(req: Request) {
       email,
       licensePoints,
       commissionPercentage,
+      fixedSalaryMonthly,
+      commissionMode,
+      commissionThreshold,
+      commissionEnabled,
     } = body;
 
     await prisma.driver.update({
@@ -21,6 +25,19 @@ export async function POST(req: Request) {
         commissionPercentage:
           commissionPercentage !== undefined
             ? Number(commissionPercentage)
+            : undefined,
+        fixedSalaryMonthly:
+          fixedSalaryMonthly !== undefined
+            ? Number(fixedSalaryMonthly)
+            : undefined,
+        commissionMode: commissionMode || undefined,
+        commissionThreshold:
+          commissionThreshold !== undefined
+            ? Number(commissionThreshold)
+            : undefined,
+        commissionEnabled:
+          commissionEnabled !== undefined
+            ? Boolean(commissionEnabled)
             : undefined,
       },
     });

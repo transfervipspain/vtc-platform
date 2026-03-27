@@ -19,8 +19,31 @@ function getEndOfWeek(start: Date) {
   return end;
 }
 
+function getStartOfMonth(date: Date) {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function getEndOfMonth(date: Date) {
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
 function formatDate(date: Date) {
   return date.toISOString().split("T")[0];
+}
+
+function getAppliedFixedSalary(
+  fixedSalaryMonthly: number,
+  commissionMode: string
+) {
+  if (commissionMode === "weekly") {
+    return fixedSalaryMonthly / 4.33;
+  }
+
+  return fixedSalaryMonthly;
 }
 
 export default async function LiquidacionConductorPage({
@@ -34,15 +57,6 @@ export default async function LiquidacionConductorPage({
   const query = await searchParams;
 
   const selectedDate = query.date ? new Date(query.date) : new Date();
-
-  const prevWeek = new Date(selectedDate);
-  prevWeek.setDate(prevWeek.getDate() - 7);
-
-  const nextWeek = new Date(selectedDate);
-  nextWeek.setDate(nextWeek.getDate() + 7);
-
-  const startWeek = getStartOfWeek(selectedDate);
-  const endWeek = getEndOfWeek(startWeek);
 
   const driver = await prisma.driver.findUnique({
     where: { id: driverId },
@@ -59,12 +73,36 @@ export default async function LiquidacionConductorPage({
     );
   }
 
+  const periodStart =
+    driver.commissionMode === "monthly"
+      ? getStartOfMonth(selectedDate)
+      : getStartOfWeek(selectedDate);
+
+  const periodEnd =
+    driver.commissionMode === "monthly"
+      ? getEndOfMonth(selectedDate)
+      : getEndOfWeek(periodStart);
+
+  const prevDate = new Date(selectedDate);
+  if (driver.commissionMode === "monthly") {
+    prevDate.setMonth(prevDate.getMonth() - 1);
+  } else {
+    prevDate.setDate(prevDate.getDate() - 7);
+  }
+
+  const nextDate = new Date(selectedDate);
+  if (driver.commissionMode === "monthly") {
+    nextDate.setMonth(nextDate.getMonth() + 1);
+  } else {
+    nextDate.setDate(nextDate.getDate() + 7);
+  }
+
   const operations = await prisma.dailyOperation.findMany({
     where: {
       driverId,
       operationDate: {
-        gte: startWeek,
-        lte: endWeek,
+        gte: periodStart,
+        lte: periodEnd,
       },
     },
     include: {
@@ -108,11 +146,6 @@ export default async function LiquidacionConductorPage({
       op.vehicleEnergyLog?.fuelCost ??
       0;
 
-    const baseLiquidable = totalGenerated - energyCost;
-    const commission = driver.commissionPercentage / 100;
-    const driverPayment = baseLiquidable * commission;
-    const companyMargin = baseLiquidable * (1 - commission);
-
     return {
       id: op.id,
       date: op.operationDate,
@@ -123,9 +156,6 @@ export default async function LiquidacionConductorPage({
       privateAmount,
       totalGenerated,
       energyCost,
-      baseLiquidable,
-      driverPayment,
-      companyMargin,
     };
   });
 
@@ -133,17 +163,29 @@ export default async function LiquidacionConductorPage({
     (acc, row) => {
       acc.totalGenerated += row.totalGenerated;
       acc.energyCost += row.energyCost;
-      acc.driverPayment += row.driverPayment;
-      acc.companyMargin += row.companyMargin;
       return acc;
     },
     {
       totalGenerated: 0,
       energyCost: 0,
-      driverPayment: 0,
-      companyMargin: 0,
     }
   );
+
+  const threshold = driver.commissionEnabled ? driver.commissionThreshold : 0;
+  const excess = driver.commissionEnabled
+    ? Math.max(0, totals.totalGenerated - threshold)
+    : 0;
+  const variableCommission = driver.commissionEnabled
+    ? excess * (driver.commissionPercentage / 100)
+    : 0;
+
+  const fixedSalaryApplied = getAppliedFixedSalary(
+    driver.fixedSalaryMonthly ?? 0,
+    driver.commissionMode
+  );
+
+  const totalDriverCost = fixedSalaryApplied + variableCommission;
+  const companyMargin = totals.totalGenerated - totalDriverCost;
 
   const cardStyle = {
     background: "white",
@@ -169,23 +211,40 @@ export default async function LiquidacionConductorPage({
       style={{
         padding: 32,
         fontFamily: "Arial",
-        maxWidth: 1400,
+        maxWidth: 1450,
         margin: "0 auto",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <h1 style={{ marginBottom: 8 }}>Liquidación individual</h1>
           <p style={{ margin: 0, color: "#555" }}>
             {driver.fullName} · Comisión: {driver.commissionPercentage.toFixed(0)}%
           </p>
           <p style={{ marginTop: 8, color: "#555" }}>
-            Semana: {startWeek.toLocaleDateString("es-ES")} -{" "}
-            {endWeek.toLocaleDateString("es-ES")}
+            Modo: {driver.commissionMode === "monthly" ? "Mensual" : "Semanal"}
+          </p>
+          <p style={{ marginTop: 8, color: "#555" }}>
+            Periodo: {periodStart.toLocaleDateString("es-ES")} -{" "}
+            {periodEnd.toLocaleDateString("es-ES")}
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+          }}
+        >
           <Link
             href={`/liquidaciones?date=${query.date ?? formatDate(selectedDate)}`}
             style={{
@@ -200,7 +259,7 @@ export default async function LiquidacionConductorPage({
           </Link>
 
           <a
-            href={`/liquidaciones/${driverId}?date=${formatDate(prevWeek)}`}
+            href={`/liquidaciones/${driverId}?date=${formatDate(prevDate)}`}
             style={{
               padding: "8px 12px",
               background: "#eee",
@@ -209,11 +268,13 @@ export default async function LiquidacionConductorPage({
               color: "#333",
             }}
           >
-            ⬅ Semana anterior
+            {driver.commissionMode === "monthly"
+              ? "⬅ Mes anterior"
+              : "⬅ Semana anterior"}
           </a>
 
           <a
-            href={`/liquidaciones/${driverId}?date=${formatDate(nextWeek)}`}
+            href={`/liquidaciones/${driverId}?date=${formatDate(nextDate)}`}
             style={{
               padding: "8px 12px",
               background: "#eee",
@@ -222,7 +283,9 @@ export default async function LiquidacionConductorPage({
               color: "#333",
             }}
           >
-            Semana siguiente ➡
+            {driver.commissionMode === "monthly"
+              ? "Mes siguiente ➡"
+              : "Semana siguiente ➡"}
           </a>
         </div>
       </div>
@@ -237,7 +300,7 @@ export default async function LiquidacionConductorPage({
         }}
       >
         <div style={cardStyle}>
-          <div style={cardTitle}>Facturación total</div>
+          <div style={cardTitle}>Facturación periodo</div>
           <div style={cardValue}>{totals.totalGenerated.toFixed(2)} €</div>
         </div>
 
@@ -247,22 +310,49 @@ export default async function LiquidacionConductorPage({
         </div>
 
         <div style={cardStyle}>
-          <div style={cardTitle}>Pago conductor</div>
+          <div style={cardTitle}>Umbral</div>
+          <div style={cardValue}>{threshold.toFixed(2)} €</div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Exceso sobre umbral</div>
+          <div style={cardValue}>{excess.toFixed(2)} €</div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Comisión variable</div>
           <div style={{ ...cardValue, color: "#27ae60" }}>
-            {totals.driverPayment.toFixed(2)} €
+            {variableCommission.toFixed(2)} €
+          </div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Sueldo fijo mensual</div>
+          <div style={cardValue}>{(driver.fixedSalaryMonthly ?? 0).toFixed(2)} €</div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Sueldo fijo aplicado</div>
+          <div style={cardValue}>{fixedSalaryApplied.toFixed(2)} €</div>
+        </div>
+
+        <div style={cardStyle}>
+          <div style={cardTitle}>Coste total conductor</div>
+          <div style={{ ...cardValue, color: "#8e44ad" }}>
+            {totalDriverCost.toFixed(2)} €
           </div>
         </div>
 
         <div style={cardStyle}>
           <div style={cardTitle}>Margen empresa</div>
           <div style={{ ...cardValue, color: "#2980b9" }}>
-            {totals.companyMargin.toFixed(2)} €
+            {companyMargin.toFixed(2)} €
           </div>
         </div>
       </div>
 
       {rows.length === 0 ? (
-        <p>No hay operaciones para este conductor en la semana seleccionada.</p>
+        <p>No hay operaciones para este conductor en el periodo seleccionado.</p>
       ) : (
         <div
           style={{
@@ -289,9 +379,6 @@ export default async function LiquidacionConductorPage({
                 <th style={{ padding: "10px 12px" }}>Privados</th>
                 <th style={{ padding: "10px 12px" }}>Total generado</th>
                 <th style={{ padding: "10px 12px" }}>Energía</th>
-                <th style={{ padding: "10px 12px" }}>Base liquidable</th>
-                <th style={{ padding: "10px 12px" }}>Pago conductor</th>
-                <th style={{ padding: "10px 12px" }}>Margen empresa</th>
               </tr>
             </thead>
             <tbody>
@@ -320,27 +407,6 @@ export default async function LiquidacionConductorPage({
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     {row.energyCost.toFixed(2)} €
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    {row.baseLiquidable.toFixed(2)} €
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      color: "#27ae60",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {row.driverPayment.toFixed(2)} €
-                  </td>
-                  <td
-                    style={{
-                      padding: "10px 12px",
-                      color: "#2980b9",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {row.companyMargin.toFixed(2)} €
                   </td>
                 </tr>
               ))}
