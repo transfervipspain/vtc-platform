@@ -1,213 +1,449 @@
-import TripActions from "./TripActions";
+import {
+  Container,
+  Title,
+  Text,
+  Card,
+  Group,
+  Stack,
+  Select,
+  Button,
+  Badge,
+  SimpleGrid,
+} from "@mantine/core";
+import Link from "next/link";
+import type { CSSProperties } from "react";
 import { prisma } from "@/lib/prisma";
+import { getFinancialDashboardData } from "@/lib/finance/dashboard";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+type PageProps = {
+  searchParams?: {
+    companyId?: string;
+    from?: string;
+    to?: string;
+  };
+};
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+  }).format(value);
+}
+
+function formatPercent(value: number) {
+  return `${value.toFixed(2)}%`;
+}
+
+function parseDate(value: string | undefined, fallback: Date) {
+  if (!value) return fallback;
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return fallback;
+
+  return parsed;
+}
+
+function getProfitColor(value: number) {
+  if (value > 0) return "green";
+  if (value < 0) return "red";
+  return "gray";
+}
+
+function getProfitSurface(value: number) {
+  if (value > 0) return "#f0fdf4";
+  if (value < 0) return "#fef2f2";
+  return "#f8f9fa";
+}
+
+function getProfitBorder(value: number) {
+  if (value > 0) return "#bbf7d0";
+  if (value < 0) return "#fecaca";
+  return "#dee2e6";
+}
+
+function getMarginColor(value: number) {
+  if (value > 0) return "green";
+  if (value < 0) return "red";
+  return "gray";
+}
+
+function getCostBadgeColor(value: number) {
+  if (value <= 0) return "gray";
+  if (value < 300) return "yellow";
+  if (value < 1000) return "orange";
+  return "red";
+}
+
+function getInsights(data: Awaited<ReturnType<typeof getFinancialDashboardData>>) {
+  const insights: { text: string; color: string }[] = [];
+
+  if (data.profit.real < 0) {
+    insights.push({
+      text: "⚠️ Estás en pérdidas en este periodo",
+      color: "red",
+    });
+  } else if (data.profit.marginPct < 10) {
+    insights.push({
+      text: "⚠️ Margen bajo (menos del 10%)",
+      color: "yellow",
+    });
+  } else {
+    insights.push({
+      text: "✅ Negocio rentable",
+      color: "green",
+    });
+  }
+
+  if (data.costs.driversTotal > data.income.total * 0.6) {
+    insights.push({
+      text: "👷 Coste de conductores muy alto",
+      color: "orange",
+    });
+  }
+
+  if (data.costs.energy > data.income.total * 0.25) {
+    insights.push({
+      text: "⚡ Coste energético elevado",
+      color: "yellow",
+    });
+  }
+
+  const avgPerDriver =
+    data.breakdown.driverRows.length > 0
+      ? data.profit.real / data.breakdown.driverRows.length
+      : 0;
+
+  if (avgPerDriver < 50) {
+    insights.push({
+      text: "💸 Baja rentabilidad por conductor",
+      color: "red",
+    });
+  }
+
+  return insights;
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: PageProps) {
+  const params = searchParams ?? {};
+
+  let companyId = params.companyId;
+
+  if (!companyId) {
+    const firstCompany = await prisma.company.findFirst({
+      where: { isActive: true },
+      orderBy: { createdAt: "asc" },
+      select: { id: true },
+    });
+
+    if (!firstCompany) {
+      return (
+        <Container size="xl" py="md">
+          <Card withBorder>
+            <Title order={2}>Dashboard general</Title>
+            <Text c="dimmed" size="sm" mt="sm">
+              No hay ninguna empresa activa creada todavía.
+            </Text>
+          </Card>
+        </Container>
+      );
+    }
+
+    companyId = firstCompany.id;
+  }
+
+  const companies = await prisma.company.findMany({
+    where: { isActive: true },
+    select: { id: true, legalName: true, tradeName: true },
+    orderBy: { createdAt: "asc" },
+  });
 
   const today = new Date();
+  const from = parseDate(
+    params.from,
+    new Date(today.getFullYear(), today.getMonth(), 1)
+  );
+  const to = parseDate(params.to, today);
 
-  const startToday = new Date(today);
-  startToday.setHours(0,0,0,0);
-
-  const endToday = new Date(today);
-  endToday.setHours(23,59,59,999);
-
-  const startWeek = new Date(today);
-  const day = startWeek.getDay();
-  const diff = day === 0 ? 6 : day - 1;
-  startWeek.setDate(startWeek.getDate() - diff);
-  startWeek.setHours(0,0,0,0);
-
-  const endWeek = new Date(startWeek);
-  endWeek.setDate(endWeek.getDate()+6);
-  endWeek.setHours(23,59,59,999);
-
-    const todayOperations = await prisma.dailyOperation.findMany({
-    where: {
-      operationDate: {
-        gte: startToday,
-        lte: endToday,
-      },
-    },
-    include: {
-  driver: true,
-  vehicle: true,
-  platformIncomes: {
-    include: {
-      platform: true,
-    },
-  },
-  privateIncomeSummary: true,
-  vehicleEnergyLog: true,
-},
+  const data = await getFinancialDashboardData({
+    companyId,
+    from,
+    to,
   });
 
-  const weekOperations = await prisma.dailyOperation.findMany({
-    where:{
-      operationDate:{
-        gte:startWeek,
-        lte:endWeek
-      }
-    },
-    include:{
-      platformIncomes:true,
-      privateIncomeSummary:true
-    }
-  });
+  const profitColor = getProfitColor(data.profit.real);
+  const marginColor = getMarginColor(data.profit.marginPct);
+  const insights = getInsights(data);
 
-  const pendingTrips = await prisma.privateTrip.count({
-    where:{ status:"pending" }
-  });
+  const avgProfitPerDriver =
+    data.breakdown.driverRows.length > 0
+      ? data.profit.real / data.breakdown.driverRows.length
+      : 0;
 
-  const todayIncome = todayOperations.reduce((sum,op)=>{
-
-    const platforms = op.platformIncomes.reduce(
-      (acc,i)=>acc+i.grossAmount,0
-    );
-
-    const privates = op.privateIncomeSummary?.grossAmount ?? 0;
-
-    return sum + platforms + privates;
-
-  },0);
-
-  const weekIncome = weekOperations.reduce((sum,op)=>{
-
-    const platforms = op.platformIncomes.reduce(
-      (acc,i)=>acc+i.grossAmount,0
-    );
-
-    const privates = op.privateIncomeSummary?.grossAmount ?? 0;
-
-    return sum + platforms + privates;
-
-  },0);
-
-const energyCost = todayOperations.reduce((sum, op) => {
-  const energy =
-    op.vehicleEnergyLog?.electricCost ??
-    op.vehicleEnergyLog?.fuelCost ??
-    0;
-
-  return sum + energy;
-}, 0);
-
-const todayTrips = await prisma.privateTrip.findMany({
-  where: {
-    serviceDate: {
-      gte: startToday,
-      lte: endToday,
-    },
-  },
-  orderBy: [{ serviceTime: "asc" }],
-  include: {
-    driver: true,
-    vehicle: true,
-  },
-});
-
-const recentTrips = await prisma.privateTrip.findMany({
-  orderBy: {
-    serviceDate: "desc",
-  },
-  take: 5,
-  include: {
-    driver: true,
-    vehicle: true,
-  },
-});
+  const driverCostPct =
+    data.income.total > 0
+      ? (data.costs.driversTotal / data.income.total) * 100
+      : 0;
 
   return (
-
-    <main
-  style={{
-    padding: 32,
-    fontFamily: "Arial",
-    maxWidth: 1280,
-    margin: "0 auto",
-  }}
->
-
-      <h1 style={{ marginBottom: 8 }}>Dashboard VTC</h1>
-<p style={{ marginBottom: 24, color: "#555" }}>
-  Resumen general de la operativa.
-</p>
-
-      {/* KPI CARDS */}
-
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",
-        gap:16,
-        marginTop:20,
-        marginBottom:30
-      }}>
-
-        <div style={{
-          background:"#e74c3c",
-          color:"white",
-          padding:20,
-          borderRadius:10
-        }}>
-          <div>Facturación Hoy</div>
-          <div style={{fontSize:28,fontWeight:"bold"}}>
-            {todayIncome.toFixed(2)} €
-          </div>
+    <Container size="xl" py="md">
+      <Group justify="space-between" mb="md">
+        <div>
+          <Title order={2}>Dashboard general</Title>
+          <Text c="dimmed" size="sm">
+            Vista financiera principal del negocio
+          </Text>
         </div>
 
-        <div style={{
-          background:"#27ae60",
-          color:"white",
-          padding:20,
-          borderRadius:10
-        }}>
-          <div>Neto Semana</div>
-          <div style={{fontSize:28,fontWeight:"bold"}}>
-            {weekIncome.toFixed(2)} €
+        <Link href="/agenda" style={{ textDecoration: "none" }}>
+          <Button variant="light">Ir a agenda diaria</Button>
+        </Link>
+      </Group>
+
+      <Group mb="md" gap="sm">
+        {insights.map((insight, i) => (
+          <Badge key={i} color={insight.color} size="lg" variant="light">
+            {insight.text}
+          </Badge>
+        ))}
+      </Group>
+
+      <Card withBorder mb="md" padding="lg" radius="lg">
+        <form>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gap: 16,
+              alignItems: "end",
+            }}
+          >
+            <div>
+              <Select
+                name="companyId"
+                label="Empresa"
+                data={companies.map((c) => ({
+                  value: c.id,
+                  label: c.tradeName || c.legalName,
+                }))}
+                defaultValue={companyId}
+              />
+            </div>
+
+            <div>
+              <Text size="sm" mb={6}>
+                Desde
+              </Text>
+              <input
+                type="date"
+                name="from"
+                defaultValue={from.toISOString().slice(0, 10)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #ced4da",
+                  fontSize: 14,
+                }}
+              />
+            </div>
+
+            <div>
+              <Text size="sm" mb={6}>
+                Hasta
+              </Text>
+              <input
+                type="date"
+                name="to"
+                defaultValue={to.toISOString().slice(0, 10)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #ced4da",
+                  fontSize: 14,
+                }}
+              />
+            </div>
+
+            <div>
+              <Button fullWidth type="submit">
+                Actualizar
+              </Button>
+            </div>
           </div>
-        </div>
+        </form>
+      </Card>
 
-        <div style={{
-          background:"#f39c12",
-          color:"white",
-          padding:20,
-          borderRadius:10
-        }}>
-          <div>Coste Energía Hoy</div>
-          <div style={{fontSize:28,fontWeight:"bold"}}>
-            {energyCost.toFixed(2)} €
+      <SimpleGrid cols={{ base: 1, md: 2, xl: 4 }} spacing="md" mb="md">
+        <MetricCard
+          title="Ingresos"
+          value={formatCurrency(data.income.total)}
+          color="blue"
+          background="#eff6ff"
+          borderColor="#bfdbfe"
+        />
+
+        <MetricCard
+          title="Coste conductores"
+          value={formatCurrency(data.costs.driversTotal)}
+          color="orange"
+          background="#fff7ed"
+          borderColor="#fed7aa"
+        />
+
+        <MetricCard
+          title="Beneficio"
+          value={formatCurrency(data.profit.real)}
+          color={profitColor}
+          background={getProfitSurface(data.profit.real)}
+          borderColor={getProfitBorder(data.profit.real)}
+        />
+
+        <MetricCard
+          title="Margen"
+          value={formatPercent(data.profit.marginPct)}
+          color={marginColor}
+          background={getProfitSurface(data.profit.marginPct)}
+          borderColor={getProfitBorder(data.profit.marginPct)}
+        />
+
+        <MetricCard
+          title="Energía"
+          value={formatCurrency(data.costs.energy)}
+          color="yellow"
+          background="#fefce8"
+          borderColor="#fde68a"
+        />
+
+        <MetricCard
+          title="Gastos empresa"
+          value={formatCurrency(data.costs.companyExpenses)}
+          color="grape"
+          background="#faf5ff"
+          borderColor="#e9d5ff"
+        />
+
+        <MetricCard
+          title="Beneficio medio / conductor"
+          value={formatCurrency(avgProfitPerDriver)}
+          color={avgProfitPerDriver > 0 ? "green" : "red"}
+          background={getProfitSurface(avgProfitPerDriver)}
+          borderColor={getProfitBorder(avgProfitPerDriver)}
+        />
+
+        <MetricCard
+          title="% coste conductores"
+          value={formatPercent(driverCostPct)}
+          color={
+            driverCostPct < 40
+              ? "green"
+              : driverCostPct < 60
+              ? "yellow"
+              : "red"
+          }
+          background={
+            driverCostPct < 40
+              ? "#f0fdf4"
+              : driverCostPct < 60
+              ? "#fefce8"
+              : "#fef2f2"
+          }
+          borderColor={
+            driverCostPct < 40
+              ? "#bbf7d0"
+              : driverCostPct < 60
+              ? "#fde68a"
+              : "#fecaca"
+          }
+        />
+      </SimpleGrid>
+
+      <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="md" mb="md">
+        <Card withBorder padding="lg" radius="lg">
+          <Title order={4} mb="md">
+            Desglose de ingresos
+          </Title>
+
+          <Stack gap="sm">
+            <Row
+              label="Ingresos plataformas"
+              value={formatCurrency(data.income.dailyPlatforms)}
+              valueColor="#1d4ed8"
+            />
+            <Row
+              label="Privados en operación diaria"
+              value={formatCurrency(data.income.dailyPrivateSummary)}
+              valueColor="#1d4ed8"
+            />
+            <Row
+              label="Viajes privados completados"
+              value={formatCurrency(data.income.privateTripsCompleted)}
+              valueColor="#1d4ed8"
+            />
+            <Row
+              label="Total ingresos"
+              value={formatCurrency(data.income.total)}
+              strong
+              valueColor="#1d4ed8"
+            />
+          </Stack>
+        </Card>
+
+        <Card withBorder padding="lg" radius="lg">
+          <Title order={4} mb="md">
+            Desglose de costes
+          </Title>
+
+          <Stack gap="sm">
+            <Row
+              label="Conductores fijo"
+              value={formatCurrency(data.costs.driversFixed)}
+              valueColor="#c2410c"
+            />
+            <Row
+              label="Conductores variable"
+              value={formatCurrency(data.costs.driversVariable)}
+              valueColor="#c2410c"
+            />
+            <Row
+              label="Energía"
+              value={formatCurrency(data.costs.energy)}
+              valueColor="#a16207"
+            />
+            <Row
+              label="Gastos empresa"
+              value={formatCurrency(data.costs.companyExpenses)}
+              valueColor="#7c3aed"
+            />
+            <Row
+              label="Total costes"
+              value={formatCurrency(data.costs.total)}
+              strong
+              valueColor="#b91c1c"
+            />
+          </Stack>
+        </Card>
+      </SimpleGrid>
+
+      <Card withBorder padding="lg" radius="lg">
+        <Group justify="space-between" mb="xs">
+          <div>
+            <Title order={4}>Rentabilidad por conductor</Title>
+            <Text size="sm" c="dimmed" mt={4}>
+              Fijo prorrateado + variable según configuración del conductor.
+            </Text>
           </div>
-        </div>
 
-        <div style={{
-          background:"#2980b9",
-          color:"white",
-          padding:20,
-          borderRadius:10
-        }}>
-          <div>Privados Pendientes</div>
-          <div style={{fontSize:28,fontWeight:"bold"}}>
-            {pendingTrips}
-          </div>
-        </div>
+          <Badge color={profitColor} variant="light" size="lg">
+            Beneficio {formatCurrency(data.profit.real)}
+          </Badge>
+        </Group>
 
-      </div>
-
-            <h2 style={{ marginBottom: 12 }}>Actividad diaria por conductores</h2>
-
-      {todayOperations.length === 0 ? (
-        <p style={{ marginBottom: 24 }}>No hay operaciones registradas hoy.</p>
-      ) : (
-        <div
-          style={{
-            overflowX: "auto",
-            marginBottom: 24,
-            border: "1px solid #ddd",
-            borderRadius: 10,
-            background: "#fafafa",
-          }}
-        >
+        <div style={{ overflowX: "auto", marginTop: 12 }}>
           <table
             style={{
               width: "100%",
@@ -216,59 +452,70 @@ const recentTrips = await prisma.privateTrip.findMany({
             }}
           >
             <thead>
-              <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-                <th style={{ padding: "8px 10px" }}>Conductor</th>
-                <th style={{ padding: "8px 10px" }}>Vehículo</th>
-                <th style={{ padding: "8px 10px" }}>Bolt</th>
-                <th style={{ padding: "8px 10px" }}>Uber</th>
-                <th style={{ padding: "8px 10px" }}>Cabify</th>
-                <th style={{ padding: "8px 10px" }}>Privados</th>
-                <th style={{ padding: "8px 10px" }}>Km</th>
-                <th style={{ padding: "8px 10px" }}>Energía</th>
-                <th style={{ padding: "8px 10px" }}>Total</th>
+              <tr
+                style={{
+                  borderBottom: "1px solid #e9ecef",
+                  textAlign: "left",
+                  background: "#f8fafc",
+                }}
+              >
+                <th style={thStyle}>Conductor</th>
+                <th style={thStyle}>Ingresos</th>
+                <th style={thStyle}>Fijo</th>
+                <th style={thStyle}>Variable</th>
+                <th style={thStyle}>Total</th>
+                <th style={thStyle}>Beneficio</th>
               </tr>
             </thead>
             <tbody>
-              {todayOperations.map((op) => {
-                const boltAmount =
-                  op.platformIncomes.find(
-                    (i) => i.platform?.name?.toLowerCase() === "bolt"
-                  )?.grossAmount ?? 0;
-
-                const uberAmount =
-                  op.platformIncomes.find(
-                    (i) => i.platform?.name?.toLowerCase() === "uber"
-                  )?.grossAmount ?? 0;
-
-                const cabifyAmount =
-                  op.platformIncomes.find(
-                    (i) => i.platform?.name?.toLowerCase() === "cabify"
-                  )?.grossAmount ?? 0;
-
-                const privateAmount = op.privateIncomeSummary?.grossAmount ?? 0;
-
-                const energy =
-                  op.vehicleEnergyLog?.electricCost ??
-                  op.vehicleEnergyLog?.fuelCost ??
-                  0;
-
-                const total =
-                  boltAmount + uberAmount + cabifyAmount + privateAmount;
+              {data.breakdown.driverRows.map((d) => {
+                const profit = d.generatedIncome - d.totalCost;
 
                 return (
-                  <tr key={op.id} style={{ borderTop: "1px solid #e5e5e5" }}>
-                    <td style={{ padding: "8px 10px" }}>{op.driver.fullName}</td>
-                    <td style={{ padding: "8px 10px" }}>{op.vehicle.plateNumber}</td>
-                    <td style={{ padding: "8px 10px" }}>{boltAmount.toFixed(2)} €</td>
-                    <td style={{ padding: "8px 10px" }}>{uberAmount.toFixed(2)} €</td>
-                    <td style={{ padding: "8px 10px" }}>{cabifyAmount.toFixed(2)} €</td>
-                    <td style={{ padding: "8px 10px" }}>{privateAmount.toFixed(2)} €</td>
-                    <td style={{ padding: "8px 10px" }}>
-                      {op.vehicleEnergyLog?.kilometers ?? 0}
+                  <tr
+                    key={d.driverId}
+                    style={{
+                      borderBottom: "1px solid #f1f3f5",
+                    }}
+                  >
+                    <td style={tdStyle}>
+                      <span style={{ fontWeight: 600 }}>{d.driverName}</span>
                     </td>
-                    <td style={{ padding: "8px 10px" }}>{energy.toFixed(2)} €</td>
-                    <td style={{ padding: "8px 10px", fontWeight: "bold" }}>
-                      {total.toFixed(2)} €
+
+                    <td style={tdStyle}>
+                      <Badge color="blue" variant="light">
+                        {formatCurrency(d.generatedIncome)}
+                      </Badge>
+                    </td>
+
+                    <td style={tdStyle}>
+                      <span style={{ color: "#c2410c", fontWeight: 500 }}>
+                        {formatCurrency(d.fixedCost)}
+                      </span>
+                    </td>
+
+                    <td style={tdStyle}>
+                      <span style={{ color: "#ea580c", fontWeight: 500 }}>
+                        {formatCurrency(d.variableCost)}
+                      </span>
+                    </td>
+
+                    <td style={tdStyle}>
+                      <Badge
+                        color={getCostBadgeColor(d.totalCost)}
+                        variant="light"
+                      >
+                        {formatCurrency(d.totalCost)}
+                      </Badge>
+                    </td>
+
+                    <td style={tdStyle}>
+                      <Badge
+                        color={profit >= 0 ? "green" : "red"}
+                        variant="light"
+                      >
+                        {formatCurrency(profit)}
+                      </Badge>
                     </td>
                   </tr>
                 );
@@ -276,184 +523,79 @@ const recentTrips = await prisma.privateTrip.findMany({
             </tbody>
           </table>
         </div>
-      )}
-     
-
-            <h2 style={{ marginBottom: 12 }}>Timeline de servicios de hoy</h2>
-
-      {todayTrips.length === 0 ? (
-        <p style={{ marginBottom: 24 }}>No hay servicios privados para hoy.</p>
-      ) : (
-        <div
-          style={{
-            marginBottom: 30,
-            border: "1px solid #ddd",
-            borderRadius: 10,
-            overflow: "hidden",
-            background: "#fafafa",
-          }}
-        >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: 14,
-            }}
-          >
-            <thead>
-              <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-                <th style={{ padding: "8px 10px" }}>Hora</th>
-                <th style={{ padding: "8px 10px" }}>Importe</th>
-                <th style={{ padding: "8px 10px" }}>Ruta</th>
-                <th style={{ padding: "8px 10px" }}>Conductor</th>
-                <th style={{ padding: "8px 10px" }}>Vehículo</th>
-                <th style={{ padding: "8px 10px" }}>Estado</th>
-                <th style={{ padding: "8px 10px" }}>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {todayTrips.map((trip) => (
-                <tr key={trip.id} style={{ borderTop: "1px solid #e5e5e5" }}>
-                  <td style={{ padding: "8px 10px", fontWeight: "bold" }}>
-                    {trip.serviceTime || "--:--"}
-                  </td>
-
-                  <td style={{ padding: "8px 10px" }}>
-                    {trip.amount.toFixed(2)} €
-                  </td>
-
-                  <td style={{ padding: "8px 10px" }}>
-                    <div>
-                      {trip.origin || "-"}{" "}
-                      <span style={{ color: "#888" }}>→</span>{" "}
-                      {trip.destination || "-"}
-                    </div>
-                    {trip.stops && (
-                      <div style={{ fontSize: 12, color: "#666", marginTop: 2 }}>
-                        Paradas: {trip.stops}
-                      </div>
-                    )}
-                  </td>
-
-                  <td style={{ padding: "8px 10px" }}>
-                    {trip.driver?.fullName ?? "Sin asignar"}
-                  </td>
-
-                  <td style={{ padding: "8px 10px" }}>
-                    {trip.vehicle?.plateNumber ?? "Sin asignar"}
-                  </td>
-
-                  <td style={{ padding: "8px 10px" }}>
-                    <span
-                      style={{
-                        display: "inline-block",
-                        padding: "4px 10px",
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontWeight: "bold",
-                        color: "white",
-                        background:
-                          trip.status === "pending"
-                            ? "#7f8c8d"
-                            : trip.status === "confirmed"
-                            ? "#5dade2"
-                            : trip.status === "assigned"
-                            ? "#2980b9"
-                            : trip.status === "in_progress"
-                            ? "#f39c12"
-                            : trip.status === "completed"
-                            ? "#27ae60"
-                            : trip.status === "cancelled"
-                            ? "#c0392b"
-                            : "#95a5a6",
-                      }}
-                    >
-                      {trip.status}
-                    </span>
-                  </td>
-
-                  <td style={{ padding: "8px 10px" }}>
-                    <TripActions tripId={trip.id} status={trip.status} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* VIAJES PRIVADOS */}
-
-<h2>Viajes Privados</h2>
-
-<div
-  style={{
-    marginTop: 10,
-    border: "1px solid #ddd",
-    borderRadius: 10,
-    overflow: "hidden",
-    background: "#fafafa",
-  }}
->
-  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-    <thead>
-      <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-        <th style={{ padding: 12 }}>Fecha / Hora</th>
-        <th style={{ padding: 12 }}>Importe</th>
-        <th style={{ padding: 12 }}>Conductor</th>
-        <th style={{ padding: 12 }}>Vehículo</th>
-        <th style={{ padding: 12 }}>Estado</th>
-	<th style={{ padding: 12 }}>Acción</th>
-      </tr>
-    </thead>
-    <tbody>
-      {recentTrips.map((trip) => (
-        <tr key={trip.id} style={{ borderTop: "1px solid #e5e5e5" }}>
-          <td style={{ padding: 12 }}>
-            {new Date(trip.serviceDate).toLocaleDateString("es-ES")} · {trip.serviceTime}
-          </td>
-          <td style={{ padding: 12 }}>{trip.amount} €</td>
-          <td style={{ padding: 12 }}>
-            {trip.driver?.fullName ?? "Sin asignar"}
-          </td>
-          <td style={{ padding: 12 }}>
-            {trip.vehicle?.plateNumber ?? "Sin asignar"}
-          </td>
-	<td style={{ padding: 12 }}>
-  <TripActions tripId={trip.id} status={trip.status} />
-</td>
-          <td style={{ padding: 12 }}>
-            <span
-              style={{
-                display: "inline-block",
-                padding: "4px 10px",
-                borderRadius: 6,
-                fontSize: 12,
-                fontWeight: "bold",
-                color: "white",
-                background:
-                  trip.status === "pending"
-                    ? "#7f8c8d"
-                    : trip.status === "assigned"
-                    ? "#2980b9"
-                    : trip.status === "completed"
-                    ? "#27ae60"
-                    : trip.status === "cancelled"
-                    ? "#c0392b"
-                    : "#95a5a6",
-              }}
-            >
-              {trip.status}
-            </span>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
-
-    </main>
-
+      </Card>
+    </Container>
   );
-
 }
+
+function MetricCard({
+  title,
+  value,
+  color,
+  background,
+  borderColor,
+}: {
+  title: string;
+  value: string;
+  color: string;
+  background: string;
+  borderColor: string;
+}) {
+  return (
+    <Card
+      withBorder
+      padding="lg"
+      radius="lg"
+      style={{
+        background,
+        borderColor,
+      }}
+    >
+      <Stack gap={4}>
+        <Text size="sm" c="dimmed">
+          {title}
+        </Text>
+        <Text fw={900} size="xl" c={color}>
+          {value}
+        </Text>
+      </Stack>
+    </Card>
+  );
+}
+
+function Row({
+  label,
+  value,
+  strong = false,
+  valueColor,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  valueColor?: string;
+}) {
+  return (
+    <Group
+      justify="space-between"
+      style={{
+        paddingBottom: 8,
+        borderBottom: "1px solid #f1f3f5",
+      }}
+    >
+      <Text fw={strong ? 700 : 400}>{label}</Text>
+      <Text fw={strong ? 700 : 500} style={{ color: valueColor }}>
+        {value}
+      </Text>
+    </Group>
+  );
+}
+
+const thStyle: CSSProperties = {
+  padding: "12px 10px",
+  fontWeight: 700,
+  color: "#475569",
+};
+
+const tdStyle: CSSProperties = {
+  padding: "12px 10px",
+};

@@ -1,41 +1,54 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-export async function POST(req: Request) {
+export const dynamic = "force-dynamic";
 
+export async function POST(request: Request) {
   try {
+    const body = await request.json();
+    const { tripId, driverId } = body ?? {};
 
-    const body = await req.json();
+    if (!tripId || !driverId) {
+      return NextResponse.json(
+        { error: "tripId y driverId son obligatorios" },
+        { status: 400 }
+      );
+    }
 
-    const driver = await prisma.driver.findUnique({
-      where: { id: body.driverId }
-    });
-
-    const trip = await prisma.privateTrip.update({
-
-      where: {
-        id: body.tripId
+    const existingTrip = await prisma.privateTrip.findUnique({
+      where: { id: tripId },
+      select: {
+        id: true,
+        status: true,
       },
-
-      data: {
-        driverId: body.driverId,
-        vehicleId: driver?.defaultVehicleId ?? null,
-        status: "assigned"
-      }
-
     });
 
-    return NextResponse.json(trip);
+    if (!existingTrip) {
+      return NextResponse.json(
+        { error: "Viaje no encontrado" },
+        { status: 404 }
+      );
+    }
 
+    const updatedTrip = await prisma.privateTrip.update({
+      where: { id: tripId },
+      data: {
+        driverId,
+        status: existingTrip.status === "pending" ? "assigned" : existingTrip.status,
+      },
+      include: {
+        driver: true,
+        vehicle: true,
+      },
+    });
+
+    return NextResponse.json(updatedTrip);
   } catch (error) {
-
-    console.error(error);
+    console.error("POST /api/assign-trip error:", error);
 
     return NextResponse.json(
-      { error: "Error asignando servicio" },
+      { error: "No se pudo asignar el conductor" },
       { status: 500 }
     );
-
   }
-
 }

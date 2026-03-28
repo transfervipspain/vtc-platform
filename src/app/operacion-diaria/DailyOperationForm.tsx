@@ -20,6 +20,7 @@ type Props = {
   drivers: Driver[];
   vehicles: Vehicle[];
 };
+
 function getWeekdayLabel(dateString: string) {
   if (!dateString) return "";
 
@@ -36,6 +37,7 @@ function getWeekdayLabel(dateString: string) {
 
   return weekdays[date.getDay()];
 }
+
 export default function DailyOperationForm({
   companyId,
   drivers,
@@ -99,159 +101,299 @@ export default function DailyOperationForm({
       return;
     }
 
-      setMessage("Registro guardado correctamente");
-      window.location.href = "/operacion-diaria";
+    setMessage("Registro guardado correctamente");
+    window.location.href = "/operacion-diaria";
   }
 
   return (
     <form
       onSubmit={handleSubmit}
       style={{
-        border: "1px solid #ddd",
-        borderRadius: 12,
-        padding: 20,
-        background: "#fff",
+        border: "1px solid #e5e7eb",
+        borderRadius: 16,
+        padding: 24,
+        background: "#ffffff",
+        boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
         display: "grid",
-        gap: 14,
+        gap: 20,
       }}
     >
-      <h2>Nuevo registro</h2>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
-          <label>Conductor</label>
-          <select
-            value={driverId}
-            onChange={(e) => setDriverId(e.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
-          >
-            {drivers.map((driver) => (
-              <option key={driver.id} value={driver.id}>
-                {driver.fullName}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label>Vehículo</label>
-          <select
-            value={vehicleId}
-            onChange={(e) => setVehicleId(e.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
-          >
-            {vehicles.map((vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicle.plateNumber} - {vehicle.brand} {vehicle.model}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
-          <label>Fecha</label>
-          <input
-  type="date"
-  value={operationDate}
-  onChange={(e) => {
-    const value = e.target.value;
-    setOperationDate(value);
-    setWeekdayLabel(getWeekdayLabel(value));
-  }}
-  style={{ width: "100%", padding: 8, marginTop: 4 }}
-  required
-/>
-        </div>
-
-        <div>
-          <label>Día de la semana</label>
-          <input
-            value={weekdayLabel}
-            onChange={(e) => setWeekdayLabel(e.target.value)}
-            placeholder="Lunes, Martes..."
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
-          />
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        <div>
-          <label>Bolt (€)</label>
-          <input value={bolt} onChange={(e) => setBolt(e.target.value)} type="number" step="0.01" style={{ width: "100%", padding: 8, marginTop: 4 }} />
-        </div>
-        <div>
-          <label>Uber (€)</label>
-          <input value={uber} onChange={(e) => setUber(e.target.value)} type="number" step="0.01" style={{ width: "100%", padding: 8, marginTop: 4 }} />
-        </div>
-        <div>
-          <label>Cabify (€)</label>
-          <input value={cabify} onChange={(e) => setCabify(e.target.value)} type="number" step="0.01" style={{ width: "100%", padding: 8, marginTop: 4 }} />
-        </div>
-        <div>
-          <label>Privado (€)</label>
-          <input value={privado} onChange={(e) => setPrivado(e.target.value)} type="number" step="0.01" style={{ width: "100%", padding: 8, marginTop: 4 }} />
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-        <div>
-          <label>Propinas (€)</label>
-          <input value={propinas} onChange={(e) => setPropinas(e.target.value)} type="number" step="0.01" style={{ width: "100%", padding: 8, marginTop: 4 }} />
-        </div>
-        <div>
-          <label>Efectivo (€)</label>
-          <input value={efectivo} onChange={(e) => setEfectivo(e.target.value)} type="number" step="0.01" style={{ width: "100%", padding: 8, marginTop: 4 }} />
-        </div>
-        <div>
-          <label>Kilómetros</label>
-          <input value={kilometers} onChange={(e) => setKilometers(e.target.value)} type="number" step="0.01" style={{ width: "100%", padding: 8, marginTop: 4 }} />
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-        <div>
-          <label>Coste energía (€)</label>
-          <input value={energyCost} onChange={(e) => setEnergyCost(e.target.value)} type="number" step="0.01" style={{ width: "100%", padding: 8, marginTop: 4 }} />
-        </div>
-
-        <div>
-          <label>{isElectric ? "kWh" : "Litros"}</label>
-          <input
-            value={energyQuantity}
-            onChange={(e) => setEnergyQuantity(e.target.value)}
-            type="number"
-            step="0.01"
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
-          />
-        </div>
-      </div>
-
       <div>
-        <label>Notas</label>
-        <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 4, minHeight: 80 }}
-        />
+        <h2 style={{ margin: 0, marginBottom: 6 }}>Nuevo registro</h2>
+        <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+          Registra la operación diaria de un conductor y su vehículo.
+        </p>
       </div>
 
-      <button
-        type="submit"
-        style={{
-          background: "black",
-          color: "white",
-          border: "none",
-          borderRadius: 8,
-          padding: "12px 16px",
-          cursor: "pointer",
-        }}
-      >
-        Guardar operación
-      </button>
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Datos básicos</div>
 
-      {message && <p>{message}</p>}
+        <div style={twoColsStyle}>
+          <Field label="Conductor">
+            <select
+              value={driverId}
+              onChange={(e) => setDriverId(e.target.value)}
+              style={inputStyle}
+            >
+              {drivers.map((driver) => (
+                <option key={driver.id} value={driver.id}>
+                  {driver.fullName}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Vehículo">
+            <select
+              value={vehicleId}
+              onChange={(e) => setVehicleId(e.target.value)}
+              style={inputStyle}
+            >
+              {vehicles.map((vehicle) => (
+                <option key={vehicle.id} value={vehicle.id}>
+                  {vehicle.plateNumber} - {vehicle.brand} {vehicle.model}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        <div style={twoColsStyle}>
+          <Field label="Fecha">
+            <input
+              type="date"
+              value={operationDate}
+              onChange={(e) => {
+                const value = e.target.value;
+                setOperationDate(value);
+                setWeekdayLabel(getWeekdayLabel(value));
+              }}
+              style={inputStyle}
+              required
+            />
+          </Field>
+
+          <Field label="Día de la semana">
+            <input
+              value={weekdayLabel}
+              onChange={(e) => setWeekdayLabel(e.target.value)}
+              placeholder="Lunes, Martes..."
+              style={inputStyle}
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Ingresos por plataforma</div>
+
+        <div style={fourColsStyle}>
+          <Field label="Bolt (€)">
+            <input
+              value={bolt}
+              onChange={(e) => setBolt(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Uber (€)">
+            <input
+              value={uber}
+              onChange={(e) => setUber(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Cabify (€)">
+            <input
+              value={cabify}
+              onChange={(e) => setCabify(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Privado (€)">
+            <input
+              value={privado}
+              onChange={(e) => setPrivado(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Extras y energía</div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 14,
+          }}
+        >
+          <Field label="Propinas (€)">
+            <input
+              value={propinas}
+              onChange={(e) => setPropinas(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Efectivo (€)">
+            <input
+              value={efectivo}
+              onChange={(e) => setEfectivo(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Kilómetros">
+            <input
+              value={kilometers}
+              onChange={(e) => setKilometers(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label="Coste energía (€)">
+            <input
+              value={energyCost}
+              onChange={(e) => setEnergyCost(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+
+          <Field label={isElectric ? "kWh" : "Litros"}>
+            <input
+              value={energyQuantity}
+              onChange={(e) => setEnergyQuantity(e.target.value)}
+              type="number"
+              step="0.01"
+              style={inputStyle}
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Observaciones</div>
+
+        <Field label="Notas">
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            style={{
+              ...inputStyle,
+              minHeight: 90,
+              resize: "vertical",
+            }}
+          />
+        </Field>
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <button type="submit" style={submitButtonStyle}>
+          Guardar operación
+        </button>
+
+        {message ? (
+          <span
+            style={{
+              color: message.toLowerCase().includes("error") ? "#b91c1c" : "#166534",
+              fontSize: 14,
+              fontWeight: 500,
+            }}
+          >
+            {message}
+          </span>
+        ) : null}
+      </div>
     </form>
   );
 }
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <label
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: "#374151",
+        }}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const sectionStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 14,
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 700,
+  color: "#111827",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const twoColsStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: 14,
+};
+
+const fourColsStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+  gap: 14,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  border: "1px solid #d1d5db",
+  borderRadius: 10,
+  fontSize: 14,
+  background: "#fff",
+  boxSizing: "border-box",
+};
+
+const submitButtonStyle: React.CSSProperties = {
+  background: "#111827",
+  color: "white",
+  border: "none",
+  borderRadius: 10,
+  padding: "12px 18px",
+  cursor: "pointer",
+  fontWeight: 600,
+  fontSize: 14,
+};

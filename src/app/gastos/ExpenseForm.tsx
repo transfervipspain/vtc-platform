@@ -1,10 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+
+const EXPENSE_CATEGORIES = [
+  "Nominas",
+  "comisiones",
+  "Seg Social",
+  "Gasolina",
+  "Gestoría",
+  "Seguros",
+  "Taller",
+  "Cuota autónomos",
+  "Cuota Coche",
+  "Gastos Bancarios",
+  "Lavados",
+  "Peajes",
+  "garage",
+  "Varios",
+  "linea movil",
+] as const;
+
+const CUSTOM_CATEGORY_VALUE = "__custom__";
 
 export default function ExpenseForm({ companyId }: { companyId: string }) {
   const [concept, setConcept] = useState("");
-  const [category, setCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [type, setType] = useState("fixed");
@@ -12,8 +33,22 @@ export default function ExpenseForm({ companyId }: { companyId: string }) {
   const [notes, setNotes] = useState("");
   const [message, setMessage] = useState("");
 
+  const finalCategory = useMemo(() => {
+    if (selectedCategory === CUSTOM_CATEGORY_VALUE) {
+      return customCategory.trim();
+    }
+
+    return selectedCategory.trim();
+  }, [selectedCategory, customCategory]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!finalCategory) {
+      setMessage("Debes seleccionar o escribir una categoría");
+      return;
+    }
+
     setMessage("Guardando...");
 
     const res = await fetch("/api/expenses/create", {
@@ -24,7 +59,7 @@ export default function ExpenseForm({ companyId }: { companyId: string }) {
       body: JSON.stringify({
         companyId,
         concept,
-        category,
+        category: finalCategory,
         amount: Number(amount),
         expenseDate,
         type,
@@ -69,12 +104,30 @@ export default function ExpenseForm({ companyId }: { companyId: string }) {
 
         <div>
           <label>Categoría</label>
-          <input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
             required
             style={{ width: "100%", padding: 8, marginTop: 4 }}
-          />
+          >
+            <option value="">Seleccionar</option>
+            {EXPENSE_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+            <option value={CUSTOM_CATEGORY_VALUE}>Otra...</option>
+          </select>
+
+          {selectedCategory === CUSTOM_CATEGORY_VALUE && (
+            <input
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value)}
+              placeholder="Escribe una categoría nueva"
+              required
+              style={{ width: "100%", padding: 8, marginTop: 8 }}
+            />
+          )}
         </div>
 
         <div>

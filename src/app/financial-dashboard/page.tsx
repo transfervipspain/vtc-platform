@@ -11,6 +11,7 @@ import {
   SimpleGrid,
 } from "@mantine/core";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { prisma } from "@/lib/prisma";
 import { getFinancialDashboardData } from "@/lib/finance/dashboard";
 
@@ -75,6 +76,55 @@ function getCostBadgeColor(value: number) {
   return "red";
 }
 
+function getInsights(data: Awaited<ReturnType<typeof getFinancialDashboardData>>) {
+  const insights: { text: string; color: string }[] = [];
+
+  if (data.profit.real < 0) {
+    insights.push({
+      text: "⚠️ Estás en pérdidas en este periodo",
+      color: "red",
+    });
+  } else if (data.profit.marginPct < 10) {
+    insights.push({
+      text: "⚠️ Margen bajo (menos del 10%)",
+      color: "yellow",
+    });
+  } else {
+    insights.push({
+      text: "✅ Negocio rentable",
+      color: "green",
+    });
+  }
+
+  if (data.costs.driversTotal > data.income.total * 0.6) {
+    insights.push({
+      text: "👷 Coste de conductores muy alto",
+      color: "orange",
+    });
+  }
+
+  if (data.costs.energy > data.income.total * 0.25) {
+    insights.push({
+      text: "⚡ Coste energético elevado",
+      color: "yellow",
+    });
+  }
+
+  const avgPerDriver =
+    data.breakdown.driverRows.length > 0
+      ? data.profit.real / data.breakdown.driverRows.length
+      : 0;
+
+  if (avgPerDriver < 50) {
+    insights.push({
+      text: "💸 Baja rentabilidad por conductor",
+      color: "red",
+    });
+  }
+
+  return insights;
+}
+
 export default async function FinancialDashboardPage({
   searchParams,
 }: PageProps) {
@@ -126,6 +176,16 @@ export default async function FinancialDashboardPage({
 
   const profitColor = getProfitColor(data.profit.real);
   const marginColor = getMarginColor(data.profit.marginPct);
+  const insights = getInsights(data);
+const avgProfitPerDriver =
+  data.breakdown.driverRows.length > 0
+    ? data.profit.real / data.breakdown.driverRows.length
+    : 0;
+
+const driverCostPct =
+  data.income.total > 0
+    ? (data.costs.driversTotal / data.income.total) * 100
+    : 0;
 
   return (
     <Container size="xl" py="md">
@@ -140,6 +200,14 @@ export default async function FinancialDashboardPage({
         <Link href="/dashboard" style={{ textDecoration: "none" }}>
           <Button variant="light">Dashboard general</Button>
         </Link>
+      </Group>
+
+      <Group mb="md" gap="sm">
+        {insights.map((insight, i) => (
+          <Badge key={i} color={insight.color} size="lg" variant="light">
+            {insight.text}
+          </Badge>
+        ))}
       </Group>
 
       <Card withBorder mb="md" padding="lg" radius="lg">
@@ -257,6 +325,39 @@ export default async function FinancialDashboardPage({
           background={getProfitSurface(data.profit.marginPct)}
           borderColor={getProfitBorder(data.profit.marginPct)}
         />
+<MetricCard
+  title="Beneficio medio / conductor"
+  value={formatCurrency(avgProfitPerDriver)}
+  color={avgProfitPerDriver > 0 ? "green" : "red"}
+  background={getProfitSurface(avgProfitPerDriver)}
+  borderColor={getProfitBorder(avgProfitPerDriver)}
+/>
+
+<MetricCard
+  title="% coste conductores"
+  value={formatPercent(driverCostPct)}
+  color={
+    driverCostPct < 40
+      ? "green"
+      : driverCostPct < 60
+      ? "yellow"
+      : "red"
+  }
+  background={
+    driverCostPct < 40
+      ? "#f0fdf4"
+      : driverCostPct < 60
+      ? "#fefce8"
+      : "#fef2f2"
+  }
+  borderColor={
+    driverCostPct < 40
+      ? "#bbf7d0"
+      : driverCostPct < 60
+      ? "#fde68a"
+      : "#fecaca"
+  }
+/>
       </SimpleGrid>
 
       <SimpleGrid cols={{ base: 1, xl: 2 }} spacing="md" mb="md">
@@ -335,11 +436,7 @@ export default async function FinancialDashboardPage({
             </Text>
           </div>
 
-          <Badge
-            color={profitColor}
-            variant="light"
-            size="lg"
-          >
+          <Badge color={profitColor} variant="light" size="lg">
             Beneficio {formatCurrency(data.profit.real)}
           </Badge>
         </Group>
@@ -365,48 +462,62 @@ export default async function FinancialDashboardPage({
                 <th style={thStyle}>Fijo</th>
                 <th style={thStyle}>Variable</th>
                 <th style={thStyle}>Total</th>
+                <th style={thStyle}>Beneficio</th>
               </tr>
             </thead>
             <tbody>
-              {data.breakdown.driverRows.map((d) => (
-                <tr
-                  key={d.driverId}
-                  style={{
-                    borderBottom: "1px solid #f1f3f5",
-                  }}
-                >
-                  <td style={tdStyle}>
-                    <span style={{ fontWeight: 600 }}>{d.driverName}</span>
-                  </td>
+              {data.breakdown.driverRows.map((d) => {
+                const profit = d.generatedIncome - d.totalCost;
 
-                  <td style={tdStyle}>
-                    <Badge color="blue" variant="light">
-                      {formatCurrency(d.generatedIncome)}
-                    </Badge>
-                  </td>
+                return (
+                  <tr
+                    key={d.driverId}
+                    style={{
+                      borderBottom: "1px solid #f1f3f5",
+                    }}
+                  >
+                    <td style={tdStyle}>
+                      <span style={{ fontWeight: 600 }}>{d.driverName}</span>
+                    </td>
 
-                  <td style={tdStyle}>
-                    <span style={{ color: "#c2410c", fontWeight: 500 }}>
-                      {formatCurrency(d.fixedCost)}
-                    </span>
-                  </td>
+                    <td style={tdStyle}>
+                      <Badge color="blue" variant="light">
+                        {formatCurrency(d.generatedIncome)}
+                      </Badge>
+                    </td>
 
-                  <td style={tdStyle}>
-                    <span style={{ color: "#ea580c", fontWeight: 500 }}>
-                      {formatCurrency(d.variableCost)}
-                    </span>
-                  </td>
+                    <td style={tdStyle}>
+                      <span style={{ color: "#c2410c", fontWeight: 500 }}>
+                        {formatCurrency(d.fixedCost)}
+                      </span>
+                    </td>
 
-                  <td style={tdStyle}>
-                    <Badge
-                      color={getCostBadgeColor(d.totalCost)}
-                      variant="light"
-                    >
-                      {formatCurrency(d.totalCost)}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
+                    <td style={tdStyle}>
+                      <span style={{ color: "#ea580c", fontWeight: 500 }}>
+                        {formatCurrency(d.variableCost)}
+                      </span>
+                    </td>
+
+                    <td style={tdStyle}>
+                      <Badge
+                        color={getCostBadgeColor(d.totalCost)}
+                        variant="light"
+                      >
+                        {formatCurrency(d.totalCost)}
+                      </Badge>
+                    </td>
+
+                    <td style={tdStyle}>
+                      <Badge
+                        color={profit >= 0 ? "green" : "red"}
+                        variant="light"
+                      >
+                        {formatCurrency(profit)}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -442,7 +553,7 @@ function MetricCard({
         <Text size="sm" c="dimmed">
           {title}
         </Text>
-        <Text fw={800} size="xl" c={color}>
+        <Text fw={900} size="xl" c={color}>
           {value}
         </Text>
       </Stack>
@@ -477,12 +588,12 @@ function Row({
   );
 }
 
-const thStyle: React.CSSProperties = {
+const thStyle: CSSProperties = {
   padding: "12px 10px",
   fontWeight: 700,
   color: "#475569",
 };
 
-const tdStyle: React.CSSProperties = {
+const tdStyle: CSSProperties = {
   padding: "12px 10px",
 };

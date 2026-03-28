@@ -1,17 +1,163 @@
 import { prisma } from "@/lib/prisma";
 import PrivateTripForm from "./PrivateTripForm";
 import AssignDriverSelect from "./AssignDriverSelect";
+import TripActionsInline from "./TripActionsInline";
+import NewPrivateTripModal from "./NewPrivateTripModal";
 
 export const dynamic = "force-dynamic";
 
-export default async function PrivadosPage() {
+type PageProps = {
+  searchParams?: Promise<{
+    view?: string;
+  }>;
+};
+
+function formatDate(date: Date) {
+  return new Date(date).toLocaleDateString("es-ES");
+}
+
+function formatCurrency(value: number) {
+  return `${value.toFixed(2)} €`;
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "pending":
+      return "#6b7280";
+    case "assigned":
+      return "#2563eb";
+    case "in_progress":
+      return "#f59e0b";
+    case "completed":
+      return "#16a34a";
+    case "cancelled":
+      return "#dc2626";
+    default:
+      return "#9ca3af";
+  }
+}
+
+function getTimeStatus(serviceDate: Date, serviceTime?: string | null) {
+  if (!serviceTime) return "no-time";
+
+  const now = new Date();
+  const datePart = new Date(serviceDate).toISOString().split("T")[0];
+  const tripDateTime = new Date(`${datePart}T${serviceTime}:00`);
+
+  const diffMinutes = (tripDateTime.getTime() - now.getTime()) / 60000;
+
+  if (diffMinutes < -10) return "late";
+  if (diffMinutes <= 30) return "soon";
+  return "ok";
+}
+
+function getTimeColor(status: string) {
+  switch (status) {
+    case "late":
+      return "#dc2626";
+    case "soon":
+      return "#f59e0b";
+    case "ok":
+      return "#16a34a";
+    default:
+      return "#9ca3af";
+  }
+}
+
+function getPriority(status: string) {
+  switch (status) {
+    case "late":
+      return 0;
+    case "soon":
+      return 1;
+    case "ok":
+      return 2;
+    default:
+      return 3;
+  }
+}
+
+function getIncidentText(params: {
+  timeStatus: string;
+  hasDriver: boolean;
+  status: string;
+}) {
+  const { timeStatus, hasDriver, status } = params;
+
+  if (status === "cancelled") return "Cancelado";
+  if (status === "completed") return "Completado";
+
+  if (!hasDriver && timeStatus === "soon") return "Próximo sin conductor";
+  if (!hasDriver && timeStatus === "late") return "Retrasado sin conductor";
+
+  if (!hasDriver) return "Sin conductor";
+  if (timeStatus === "late") return "Retrasado";
+  if (timeStatus === "soon") return "Próximo";
+  if (status === "in_progress") return "En curso";
+  return "Controlado";
+}
+
+function getIncidentBadgeStyle(params: {
+  timeStatus: string;
+  hasDriver: boolean;
+  status: string;
+}): React.CSSProperties {
+  const { timeStatus, hasDriver, status } = params;
+
+  if (status === "cancelled") {
+    return badgeStyle("#fee2e2", "#b91c1c");
+  }
+
+  if (status === "completed") {
+    return badgeStyle("#dcfce7", "#166534");
+  }
+
+  if (!hasDriver && (timeStatus === "soon" || timeStatus === "late")) {
+    return badgeStyle("#fee2e2", "#991b1b");
+  }
+
+  if (!hasDriver) {
+    return badgeStyle("#ede9fe", "#6d28d9");
+  }
+
+  if (timeStatus === "late") {
+    return badgeStyle("#fee2e2", "#b91c1c");
+  }
+
+  if (timeStatus === "soon") {
+    return badgeStyle("#fef3c7", "#b45309");
+  }
+
+  if (status === "in_progress") {
+    return badgeStyle("#dbeafe", "#1d4ed8");
+  }
+
+  return badgeStyle("#dcfce7", "#166534");
+}
+
+function badgeStyle(background: string, color: string): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "4px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 700,
+    background,
+    color,
+    whiteSpace: "nowrap",
+  };
+}
+
+export default async function PrivadosPage({ searchParams }: PageProps) {
+  const params = (await searchParams) ?? {};
+  const view = params.view || "all";
+
   const company = await prisma.company.findFirst();
 
   const trips = await prisma.privateTrip.findMany({
-    orderBy: {
-      serviceDate: "desc",
-    },
-    take: 20,
+    orderBy: [{ serviceDate: "desc" }, { serviceTime: "asc" }],
+    take: 50,
     include: {
       driver: true,
       vehicle: true,
@@ -22,44 +168,506 @@ export default async function PrivadosPage() {
     orderBy: { fullName: "asc" },
   });
 
+  const today = new Date();
+  const startToday = new Date(today);
+  startToday.setHours(0, 0, 0, 0);
+
+  const endToday = new Date(today);
+  endToday.setHours(23, 59, 59, 999);
+
+  const todayTrips = trips.filter((trip) => {
+    const serviceDate = new Date(trip.serviceDate);
+    return serviceDate >= startToday && serviceDate <= endToday;
+  });
+
+  const todayIncome = todayTrips.reduce((sum, trip) => sum + trip.amount, 0);
+  const todayServices = todayTrips.length;
+  const todayAvgTicket = todayServices > 0 ? todayIncome / todayServices : 0;
+
+  const sortedTrips = [...trips].sort((a, b) => {
+    const statusA = getTimeStatus(a.serviceDate, a.serviceTime);
+    const statusB = getTimeStatus(b.serviceDate, b.serviceTime);
+
+    const priorityA = getPriority(statusA);
+    const priorityB = getPriority(statusB);
+
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+
+    if (a.serviceTime && b.serviceTime) {
+      return a.serviceTime.localeCompare(b.serviceTime);
+    }
+
+    if (a.serviceTime && !b.serviceTime) return -1;
+    if (!a.serviceTime && b.serviceTime) return 1;
+
+    return 0;
+  });
+
+  const stats = sortedTrips.reduce(
+    (acc, trip) => {
+      const timeStatus = getTimeStatus(trip.serviceDate, trip.serviceTime);
+      const hasDriver = Boolean(trip.driverId);
+
+      if (
+        timeStatus === "late" &&
+        trip.status !== "completed" &&
+        trip.status !== "cancelled"
+      ) {
+        acc.late += 1;
+      }
+
+      if (
+        timeStatus === "soon" &&
+        trip.status !== "completed" &&
+        trip.status !== "cancelled"
+      ) {
+        acc.soon += 1;
+      }
+
+      if (!hasDriver && trip.status !== "completed" && trip.status !== "cancelled") {
+        acc.noDriver += 1;
+      }
+
+      if (trip.status === "completed") {
+        acc.completed += 1;
+      }
+
+      return acc;
+    },
+    {
+      late: 0,
+      soon: 0,
+      noDriver: 0,
+      completed: 0,
+    }
+  );
+
+  const filteredTrips = sortedTrips.filter((trip) => {
+    const timeStatus = getTimeStatus(trip.serviceDate, trip.serviceTime);
+    const hasDriver = Boolean(trip.driverId);
+
+    if (view === "urgent") {
+      return (
+        (timeStatus === "late" || timeStatus === "soon") &&
+        trip.status !== "completed" &&
+        trip.status !== "cancelled"
+      );
+    }
+
+    if (view === "no-driver") {
+      return !hasDriver && trip.status !== "completed" && trip.status !== "cancelled";
+    }
+
+    if (view === "completed") {
+      return trip.status === "completed";
+    }
+
+    return true;
+  });
+
   return (
-    <main style={{ padding: 40, fontFamily: "Arial" }}>
-      <h1>Viajes privados</h1>
+    <main
+      style={{
+        padding: 32,
+        maxWidth: 1320,
+        margin: "0 auto",
+        fontFamily: "Arial",
+      }}
+    >
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ marginBottom: 8 }}>Viajes privados</h1>
+        <p style={{ color: "#6b7280", margin: 0 }}>
+          Gestión de servicios privados.
+        </p>
+      </div>
 
-      <p style={{ marginBottom: 20 }}>Registro de servicios privados.</p>
+      {company ? (
+        <NewPrivateTripModal>
+          <PrivateTripForm companyId={company.id} />
+        </NewPrivateTripModal>
+      ) : null}
 
-      {company && <PrivateTripForm companyId={company.id} />}
+      <section style={{ marginTop: 24, marginBottom: 28 }}>
+        <div style={{ marginBottom: 14 }}>
+          <h2 style={{ marginBottom: 6 }}>Resumen de hoy</h2>
+          <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+            Métricas rápidas de los servicios privados del día.
+          </p>
+        </div>
 
-      {trips.length === 0 ? (
-        <p>No hay viajes privados todavía.</p>
-      ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {trips.map((trip) => (
-            <div
-              key={trip.id}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <IncidentCard
+            title="Ingresos hoy"
+            valueText={formatCurrency(todayIncome)}
+            bg="#eff6ff"
+            border="#bfdbfe"
+            color="#1d4ed8"
+          />
+          <IncidentCard
+            title="Servicios hoy"
+            valueText={String(todayServices)}
+            bg="#f0fdf4"
+            border="#bbf7d0"
+            color="#166534"
+          />
+          <IncidentCard
+            title="Ticket medio"
+            valueText={formatCurrency(todayAvgTicket)}
+            bg="#faf5ff"
+            border="#e9d5ff"
+            color="#7c3aed"
+          />
+        </div>
+      </section>
+
+      <section style={{ marginTop: 32, marginBottom: 28 }}>
+        <div style={{ marginBottom: 14 }}>
+          <h2 style={{ marginBottom: 6 }}>Panel de incidencias</h2>
+          <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+            Prioriza primero los servicios urgentes y los que están sin asignar.
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
+          <IncidentCard
+            title="Retrasados"
+            value={stats.late}
+            bg="#fef2f2"
+            border="#fecaca"
+            color="#b91c1c"
+          />
+          <IncidentCard
+            title="Próximos 30 min"
+            value={stats.soon}
+            bg="#fffbeb"
+            border="#fde68a"
+            color="#b45309"
+          />
+          <IncidentCard
+            title="Sin conductor"
+            value={stats.noDriver}
+            bg="#f5f3ff"
+            border="#ddd6fe"
+            color="#6d28d9"
+          />
+          <IncidentCard
+            title="Completados"
+            value={stats.completed}
+            bg="#f0fdf4"
+            border="#bbf7d0"
+            color="#166534"
+          />
+        </div>
+      </section>
+
+      <section style={{ marginTop: 24 }}>
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            flexWrap: "wrap",
+            marginBottom: 18,
+          }}
+        >
+          <FilterLink href="/privados" active={view === "all"}>
+            Todos
+          </FilterLink>
+
+          <FilterLink href="/privados?view=urgent" active={view === "urgent"}>
+            Urgentes
+          </FilterLink>
+
+          <FilterLink
+            href="/privados?view=no-driver"
+            active={view === "no-driver"}
+          >
+            Sin conductor
+          </FilterLink>
+
+          <FilterLink
+            href="/privados?view=completed"
+            active={view === "completed"}
+          >
+            Completados
+          </FilterLink>
+        </div>
+
+        <h2 style={{ marginBottom: 16 }}>Últimos viajes</h2>
+
+        {filteredTrips.length === 0 ? (
+          <div
+            style={{
+              border: "1px dashed #d1d5db",
+              borderRadius: 12,
+              padding: 24,
+              color: "#6b7280",
+              background: "#fafafa",
+            }}
+          >
+            No hay viajes para este filtro.
+          </div>
+        ) : (
+          <div
+            style={{
+              overflowX: "auto",
+              border: "1px solid #e5e7eb",
+              borderRadius: 14,
+              background: "white",
+              boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
+            }}
+          >
+            <table
               style={{
-                border: "1px solid #ddd",
-                borderRadius: 10,
-                padding: 16,
-                background: "#fafafa",
+                width: "100%",
+                borderCollapse: "collapse",
+                fontSize: 14,
+                minWidth: 1220,
               }}
             >
-              <strong>
-                {new Date(trip.serviceDate).toLocaleDateString("es-ES")} ·{" "}
-                {trip.serviceTime}
-              </strong>
+              <thead>
+                <tr
+                  style={{
+                    background: "#f8fafc",
+                    borderBottom: "1px solid #e5e7eb",
+                  }}
+                >
+                  <th style={th}>Fecha</th>
+                  <th style={th}>Hora</th>
+                  <th style={th}>Ruta</th>
+                  <th style={th}>Importe</th>
+                  <th style={th}>Conductor</th>
+                  <th style={th}>Vehículo</th>
+                  <th style={th}>Estado</th>
+                  <th style={th}>Incidencia</th>
+                  <th style={th}>Asignar</th>
+                  <th style={th}>Acciones</th>
+                </tr>
+              </thead>
 
-              <div style={{ marginTop: 6 }}>Importe: {trip.amount} €</div>
-              <div>Conductor: {trip.driver?.fullName ?? "Sin asignar"}</div>
-              <div>Vehículo: {trip.vehicle?.plateNumber ?? "Sin asignar"}</div>
-              <div>Intermediario: {trip.intermediary ?? "-"}</div>
-              <div>Estado: {trip.status}</div>
+              <tbody>
+                {filteredTrips.map((trip) => {
+                  const timeStatus = getTimeStatus(
+                    trip.serviceDate,
+                    trip.serviceTime
+                  );
+                  const timeColor = getTimeColor(timeStatus);
+                  const hasDriver = Boolean(trip.driverId);
 
-              <AssignDriverSelect tripId={trip.id} drivers={drivers} />
-            </div>
-          ))}
-        </div>
-      )}
+                  const rowBackground =
+                    !hasDriver &&
+                    (timeStatus === "soon" || timeStatus === "late") &&
+                    trip.status !== "completed" &&
+                    trip.status !== "cancelled"
+                      ? "#fff1f2"
+                      : timeStatus === "late" &&
+                        trip.status !== "completed" &&
+                        trip.status !== "cancelled"
+                      ? "#fff7f7"
+                      : "transparent";
+
+                  return (
+                    <tr
+                      key={trip.id}
+                      style={{
+                        borderBottom: "1px solid #f1f5f9",
+                        background: rowBackground,
+                      }}
+                    >
+                      <td style={td}>{formatDate(trip.serviceDate)}</td>
+
+                      <td style={td}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            fontWeight: 700,
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              background: timeColor,
+                              boxShadow: `0 0 6px ${timeColor}`,
+                            }}
+                          />
+                          {trip.serviceTime || "--:--"}
+                        </span>
+                      </td>
+
+                      <td style={td}>
+                        <div>
+                          {trip.origin || "-"}{" "}
+                          <span style={{ color: "#9ca3af" }}>→</span>{" "}
+                          {trip.destination || "-"}
+                        </div>
+
+                        {trip.stops && (
+                          <div style={{ fontSize: 12, color: "#6b7280" }}>
+                            Paradas: {trip.stops}
+                          </div>
+                        )}
+                      </td>
+
+                      <td style={{ ...td, fontWeight: 600 }}>
+                        {formatCurrency(trip.amount)}
+                      </td>
+
+                      <td style={td}>
+                        {trip.driver?.fullName ?? (
+                          <span style={{ color: "#9ca3af" }}>Sin asignar</span>
+                        )}
+                      </td>
+
+                      <td style={td}>
+                        {trip.vehicle?.plateNumber ?? (
+                          <span style={{ color: "#9ca3af" }}>Sin asignar</span>
+                        )}
+                      </td>
+
+                      <td style={td}>
+                        <span
+                          style={{
+                            padding: "4px 10px",
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "white",
+                            background: getStatusColor(trip.status),
+                          }}
+                        >
+                          {trip.status}
+                        </span>
+                      </td>
+
+                      <td style={td}>
+                        <span
+                          style={getIncidentBadgeStyle({
+                            timeStatus,
+                            hasDriver,
+                            status: trip.status,
+                          })}
+                        >
+                          {getIncidentText({
+                            timeStatus,
+                            hasDriver,
+                            status: trip.status,
+                          })}
+                        </span>
+                      </td>
+
+                      <td style={td}>
+                        <AssignDriverSelect tripId={trip.id} drivers={drivers} />
+                      </td>
+
+                      <td style={td}>
+                        <TripActionsInline
+                          tripId={trip.id}
+                          status={trip.status}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </main>
   );
 }
+
+function IncidentCard({
+  title,
+  value,
+  valueText,
+  bg,
+  border,
+  color,
+}: {
+  title: string;
+  value?: number;
+  valueText?: string;
+  bg: string;
+  border: string;
+  color: string;
+}) {
+  const displayValue = valueText ?? String(value ?? 0);
+
+  return (
+    <div
+      style={{
+        background: bg,
+        border: `1px solid ${border}`,
+        borderRadius: 14,
+        padding: 16,
+      }}
+    >
+      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 6 }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 28, fontWeight: 800, color }}>{displayValue}</div>
+    </div>
+  );
+}
+
+function FilterLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "8px 14px",
+        borderRadius: 999,
+        textDecoration: "none",
+        fontSize: 14,
+        fontWeight: 600,
+        background: active ? "#111827" : "#f3f4f6",
+        color: active ? "white" : "#374151",
+        border: active ? "1px solid #111827" : "1px solid #e5e7eb",
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
+const th: React.CSSProperties = {
+  padding: "12px 14px",
+  textAlign: "left",
+  fontWeight: 700,
+  color: "#475569",
+  whiteSpace: "nowrap",
+};
+
+const td: React.CSSProperties = {
+  padding: "12px 14px",
+  verticalAlign: "top",
+};

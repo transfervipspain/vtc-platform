@@ -29,22 +29,25 @@ export default function AssignDriverSelect({ tripId, drivers }: Props) {
   }
 
   return (
-    <div style={{ marginTop: 10 }}>
-      <label>Asignar conductor</label>
+    <select
+      defaultValue=""
+      onChange={(e) => handleChange(e.target.value)}
+      style={{
+        padding: "6px 10px",
+        borderRadius: 8,
+        border: "1px solid #d1d5db",
+        fontSize: 13,
+        background: "white",
+        cursor: "pointer",
+      }}
+    >
+      <option value="">Asignar</option>
 
-      <select
-        defaultValue=""
-        onChange={(e) => handleChange(e.target.value)}
-        style={{ display: "block", marginTop: 6, padding: 8 }}
-      >
-        <option value="">-- seleccionar --</option>
-
-        {drivers.map((driver) => (
-          <option key={driver.id} value={driver.id}>
-            {driver.fullName}
-          </option>
-        ))}
-      </select>
-    </div>
+      {drivers.map((driver) => (
+        <option key={driver.id} value={driver.id}>
+          {driver.fullName}
+        </option>
+      ))}
+    </select>
   );
 }
