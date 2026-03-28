@@ -1,5 +1,5 @@
 "use client";
-import { DollarSign } from "lucide-react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,10 +8,13 @@ import {
   Users,
   Calendar,
   ClipboardList,
+  DollarSign,
+  FileBarChart,
+  ReceiptText,
 } from "lucide-react";
 
 const links = [
- {
+  {
     href: "/dashboard",
     label: "Dashboard",
     icon: LayoutDashboard,
@@ -31,11 +34,11 @@ const links = [
     label: "Conductores",
     icon: Users,
   },
-{
-  href: "/vehiculos",
-  label: "Vehículos",
-  icon: Car,
-},
+  {
+    href: "/vehiculos",
+    label: "Vehículos",
+    icon: Car,
+  },
   {
     href: "/agenda",
     label: "Agenda diaria",
@@ -45,8 +48,17 @@ const links = [
     href: "/gastos",
     label: "Gastos",
     icon: DollarSign,
-  }, 
-{ href: "/liquidaciones", label: "Liquidaciones", icon: LayoutDashboard },
+  },
+  {
+    href: "/liquidaciones",
+    label: "Liquidaciones",
+    icon: ReceiptText,
+  },
+  {
+    href: "/informes",
+    label: "Informes",
+    icon: FileBarChart,
+  },
 ];
 
 export default function Sidebar() {
@@ -55,23 +67,26 @@ export default function Sidebar() {
   return (
     <aside
       style={{
-        width: 250,
+        width: 270,
         minHeight: "100vh",
-        borderRight: "1px solid #e5e5e5",
-        background: "#fafafa",
-        padding: 24,
+        background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
+        color: "white",
+        padding: 20,
         boxSizing: "border-box",
+        borderRight: "1px solid rgba(255,255,255,0.06)",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      {/* Logo / título */}
-
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 24 }}>
         <div
           style={{
-            fontSize: 12,
-            color: "#777",
-            marginBottom: 6,
+            fontSize: 11,
+            color: "rgba(255,255,255,0.55)",
+            marginBottom: 8,
             textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            fontWeight: 700,
           }}
         >
           Plataforma VTC
@@ -79,17 +94,69 @@ export default function Sidebar() {
 
         <div
           style={{
-            fontSize: 22,
-            fontWeight: "bold",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 16,
+            padding: 16,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
           }}
         >
-          Transfer Vip Spain
+          <div
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 12,
+              background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 800,
+              fontSize: 16,
+              marginBottom: 12,
+              boxShadow: "0 8px 18px rgba(37,99,235,0.35)",
+            }}
+          >
+            TV
+          </div>
+
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 800,
+              lineHeight: 1.2,
+              marginBottom: 6,
+            }}
+          >
+            Transfer Vip Spain
+          </div>
+
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.65)",
+              lineHeight: 1.4,
+            }}
+          >
+            Gestión integral de flota, servicios e informes.
+          </div>
         </div>
       </div>
 
-      {/* navegación */}
+      <div
+        style={{
+          fontSize: 11,
+          color: "rgba(255,255,255,0.45)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          fontWeight: 700,
+          marginBottom: 10,
+          paddingLeft: 8,
+        }}
+      >
+        Navegación
+      </div>
 
-      <nav style={{ display: "grid", gap: 6 }}>
+      <nav style={{ display: "grid", gap: 8 }}>
         {links.map((link) => {
           const active = pathname === link.href;
           const Icon = link.icon;
@@ -101,23 +168,79 @@ export default function Sidebar() {
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "10px 12px",
-                borderRadius: 8,
+                gap: 12,
+                padding: "12px 14px",
+                borderRadius: 14,
                 textDecoration: "none",
-                color: active ? "white" : "#222",
-                background: active ? "#111" : "transparent",
-                fontWeight: 500,
-                transition: "0.15s",
+                color: active ? "#ffffff" : "rgba(255,255,255,0.78)",
+                background: active
+                  ? "linear-gradient(135deg, #2563eb, #1d4ed8)"
+                  : "rgba(255,255,255,0.03)",
+                border: active
+                  ? "1px solid rgba(255,255,255,0.14)"
+                  : "1px solid rgba(255,255,255,0.04)",
+                fontWeight: active ? 700 : 500,
+                boxShadow: active
+                  ? "0 10px 20px rgba(37,99,235,0.25)"
+                  : "none",
+                transition: "all 0.18s ease",
               }}
             >
-              <Icon size={18} />
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: active
+                    ? "rgba(255,255,255,0.16)"
+                    : "rgba(255,255,255,0.06)",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon size={18} />
+              </div>
 
-              {link.label}
+              <span>{link.label}</span>
             </Link>
           );
         })}
       </nav>
+
+      <div style={{ flex: 1 }} />
+
+      <div
+        style={{
+          marginTop: 20,
+          padding: 14,
+          borderRadius: 14,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            marginBottom: 6,
+            color: "rgba(255,255,255,0.92)",
+          }}
+        >
+          Centro de control
+        </div>
+
+        <div
+          style={{
+            fontSize: 12,
+            lineHeight: 1.5,
+            color: "rgba(255,255,255,0.58)",
+          }}
+        >
+          Operativa, gastos, liquidaciones e informes en un solo sitio.
+        </div>
+      </div>
     </aside>
   );
 }

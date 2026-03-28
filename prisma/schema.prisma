@@ -73,6 +73,7 @@ model Vehicle {
   dailyOperations DailyOperation[]
   privateTrips    PrivateTrip[]
   defaultDrivers  Driver[]
+  expenses        CompanyExpense[]
 }
 
 model Platform {
@@ -188,6 +189,7 @@ model PrivateTrip {
 model CompanyExpense {
   id        String @id @default(cuid())
   companyId String
+  vehicleId String?
 
   concept     String
   category    String
@@ -203,5 +205,6 @@ model CompanyExpense {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
 }

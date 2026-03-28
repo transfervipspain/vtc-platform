@@ -22,10 +22,23 @@ const EXPENSE_CATEGORIES = [
 
 const CUSTOM_CATEGORY_VALUE = "__custom__";
 
-export default function ExpenseForm({ companyId }: { companyId: string }) {
+type Vehicle = {
+  id: string;
+  plateNumber: string;
+  brand: string;
+  model: string;
+};
+
+type Props = {
+  companyId: string;
+  vehicles: Vehicle[];
+};
+
+export default function ExpenseForm({ companyId, vehicles }: Props) {
   const [concept, setConcept] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
+  const [vehicleId, setVehicleId] = useState("");
   const [amount, setAmount] = useState("");
   const [expenseDate, setExpenseDate] = useState("");
   const [type, setType] = useState("fixed");
@@ -58,6 +71,7 @@ export default function ExpenseForm({ companyId }: { companyId: string }) {
       },
       body: JSON.stringify({
         companyId,
+        vehicleId: vehicleId || null,
         concept,
         category: finalCategory,
         amount: Number(amount),
@@ -143,7 +157,7 @@ export default function ExpenseForm({ companyId }: { companyId: string }) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
         <div>
           <label>Fecha</label>
           <input
@@ -178,6 +192,22 @@ export default function ExpenseForm({ companyId }: { companyId: string }) {
             <option value="weekly">Semanal</option>
             <option value="monthly">Mensual</option>
             <option value="yearly">Anual</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Vehículo</label>
+          <select
+            value={vehicleId}
+            onChange={(e) => setVehicleId(e.target.value)}
+            style={{ width: "100%", padding: 8, marginTop: 4 }}
+          >
+            <option value="">Gasto general</option>
+            {vehicles.map((vehicle) => (
+              <option key={vehicle.id} value={vehicle.id}>
+                {vehicle.plateNumber} · {vehicle.brand} {vehicle.model}
+              </option>
+            ))}
           </select>
         </div>
       </div>
