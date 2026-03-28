@@ -109,11 +109,6 @@ export default function DailyOperationForm({
     <form
       onSubmit={handleSubmit}
       style={{
-        border: "1px solid #e5e7eb",
-        borderRadius: 16,
-        padding: 24,
-        background: "#ffffff",
-        boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
         display: "grid",
         gap: 20,
       }}
@@ -301,14 +296,21 @@ export default function DailyOperationForm({
             onChange={(e) => setNotes(e.target.value)}
             style={{
               ...inputStyle,
-              minHeight: 90,
+              minHeight: 96,
               resize: "vertical",
             }}
           />
         </Field>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          flexWrap: "wrap",
+        }}
+      >
         <button type="submit" style={submitButtonStyle}>
           Guardar operación
         </button>
@@ -316,7 +318,9 @@ export default function DailyOperationForm({
         {message ? (
           <span
             style={{
-              color: message.toLowerCase().includes("error") ? "#b91c1c" : "#166534",
+              color: message.toLowerCase().includes("error")
+                ? "#b91c1c"
+                : "#166534",
               fontSize: 14,
               fontWeight: 500,
             }}
@@ -388,7 +392,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 const submitButtonStyle: React.CSSProperties = {
-  background: "#111827",
+  background: "#2563eb",
   color: "white",
   border: "none",
   borderRadius: 10,

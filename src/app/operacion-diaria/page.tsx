@@ -38,7 +38,7 @@ export default async function OperacionDiariaPage({
 
   if (!company) {
     return (
-      <main style={{ padding: 40, fontFamily: "Arial, sans-serif" }}>
+      <main style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
         <h1>Operación diaria</h1>
         <p>No hay empresa cargada.</p>
       </main>
@@ -133,20 +133,19 @@ export default async function OperacionDiariaPage({
     }
   );
 
-  const avg =
-    operations.length > 0 ? totals.income / operations.length : 0;
+  const avg = operations.length > 0 ? totals.income / operations.length : 0;
 
   return (
     <main
       style={{
-        padding: 32,
+        padding: 24,
         maxWidth: 1320,
         margin: "0 auto",
         fontFamily: "Arial, sans-serif",
       }}
     >
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ marginBottom: 8 }}>Operación diaria</h1>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ margin: 0, marginBottom: 8 }}>Operación diaria</h1>
         <p style={{ color: "#6b7280", margin: 0 }}>
           Registro diario por conductor y vehículo.
         </p>
@@ -160,9 +159,9 @@ export default async function OperacionDiariaPage({
         />
       </NewDailyOperationModal>
 
-      <section style={{ marginTop: 40 }}>
+      <section style={{ marginTop: 32 }}>
         <div style={{ marginBottom: 16 }}>
-          <h2 style={{ marginBottom: 6 }}>Últimos registros</h2>
+          <h2 style={{ margin: 0, marginBottom: 6 }}>Últimos registros</h2>
           <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
             Últimas 50 operaciones registradas.
           </p>
@@ -172,9 +171,14 @@ export default async function OperacionDiariaPage({
           style={{
             marginBottom: 20,
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
             gap: 12,
             alignItems: "end",
+            background: "#ffffff",
+            border: "1px solid #e5e7eb",
+            borderRadius: 16,
+            padding: 16,
+            boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
           }}
         >
           <div>
@@ -219,29 +223,51 @@ export default async function OperacionDiariaPage({
             />
           </div>
 
-          <div style={{ display: "flex", gap: 10 }}>
-            <button type="submit" style={filterButtonStyle}>
-              Filtrar
-            </button>
+          <button type="submit" style={primaryButtonStyle}>
+            Filtrar
+          </button>
 
-            <a href="/operacion-diaria" style={clearButtonStyle}>
-              Limpiar
-            </a>
-          </div>
+          <a href="/operacion-diaria" style={secondaryButtonStyle}>
+            Limpiar
+          </a>
         </form>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             gap: 12,
             marginBottom: 20,
           }}
         >
-          <Kpi title="Ingresos" value={formatCurrency(totals.income)} color="#2563eb" />
-          <Kpi title="Km totales" value={totals.km.toFixed(0)} color="#16a34a" />
-          <Kpi title="Energía" value={formatCurrency(totals.energy)} color="#f59e0b" />
-          <Kpi title="Media / operación" value={formatCurrency(avg)} color="#7c3aed" />
+          <Kpi
+            title="Ingresos"
+            value={formatCurrency(totals.income)}
+            color="#2563eb"
+            background="#eff6ff"
+            borderColor="#bfdbfe"
+          />
+          <Kpi
+            title="Km totales"
+            value={totals.km.toFixed(0)}
+            color="#16a34a"
+            background="#f0fdf4"
+            borderColor="#bbf7d0"
+          />
+          <Kpi
+            title="Energía"
+            value={formatCurrency(totals.energy)}
+            color="#f59e0b"
+            background="#fffbeb"
+            borderColor="#fde68a"
+          />
+          <Kpi
+            title="Media / operación"
+            value={formatCurrency(avg)}
+            color="#7c3aed"
+            background="#faf5ff"
+            borderColor="#e9d5ff"
+          />
         </div>
 
         {operations.length === 0 ? (
@@ -338,7 +364,7 @@ export default async function OperacionDiariaPage({
                       <td style={tdStyle}>{formatCurrency(uber)}</td>
                       <td style={tdStyle}>{formatCurrency(cabify)}</td>
                       <td style={tdStyle}>{formatCurrency(privado)}</td>
-                      <td style={{ ...tdStyle, fontWeight: 700 }}>
+                      <td style={{ ...tdStyle, fontWeight: 700, color: "#1d4ed8" }}>
                         {formatCurrency(total)}
                       </td>
                       <td style={tdStyle}>{kilometers}</td>
@@ -360,17 +386,21 @@ function Kpi({
   title,
   value,
   color,
+  background,
+  borderColor,
 }: {
   title: string;
   value: string;
   color: string;
+  background: string;
+  borderColor: string;
 }) {
   return (
     <div
       style={{
-        background: "white",
-        border: "1px solid #e5e7eb",
-        borderRadius: 12,
+        background,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 14,
         padding: 16,
         boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
       }}
@@ -409,8 +439,8 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-const filterButtonStyle: React.CSSProperties = {
-  background: "#111827",
+const primaryButtonStyle: React.CSSProperties = {
+  background: "#2563eb",
   color: "white",
   padding: "10px 14px",
   borderRadius: 10,
@@ -418,9 +448,10 @@ const filterButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   fontWeight: 600,
   fontSize: 14,
+  minHeight: 42,
 };
 
-const clearButtonStyle: React.CSSProperties = {
+const secondaryButtonStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -431,6 +462,8 @@ const clearButtonStyle: React.CSSProperties = {
   textDecoration: "none",
   fontWeight: 600,
   fontSize: 14,
+  minHeight: 42,
+  boxSizing: "border-box",
 };
 
 const thStyle: React.CSSProperties = {
