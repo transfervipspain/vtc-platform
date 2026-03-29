@@ -6,13 +6,17 @@ import EditDriverForm from "./EditDriverForm";
 export const dynamic = "force-dynamic";
 
 export default async function ConductoresPage() {
-  const company = await prisma.company.findFirst();
+const company = await prisma.company.findFirst({
+  where: {
+    isActive: true,
+    NOT: { id: "" },
+  },
+  orderBy: { createdAt: "asc" },
+});
 
   const drivers = await prisma.driver.findMany({
-    orderBy: [
-      { isActive: "desc" }, // activos primero
-      { fullName: "asc" },
-    ],
+    where: company ? { companyId: company.id } : undefined,
+    orderBy: [{ isActive: "desc" }, { fullName: "asc" }],
     include: {
       defaultVehicle: true,
     },
@@ -22,7 +26,13 @@ export default async function ConductoresPage() {
     <main style={{ padding: 40, fontFamily: "Arial" }}>
       <h1>Conductores</h1>
 
-      {company && <DriverForm companyId={company.id} />}
+      {!company ? (
+        <p style={{ color: "#666" }}>
+          No hay ninguna empresa activa creada todavía.
+        </p>
+      ) : (
+        <DriverForm companyId={company.id} />
+      )}
 
       <div
         style={{
@@ -46,13 +56,11 @@ export default async function ConductoresPage() {
               <th style={{ padding: "10px 12px" }}>Teléfono</th>
               <th style={{ padding: "10px 12px" }}>Vehículo habitual</th>
               <th style={{ padding: "10px 12px" }}>Estado</th>
-
               <th style={{ padding: "10px 12px" }}>% Comisión</th>
               <th style={{ padding: "10px 12px" }}>Modo</th>
               <th style={{ padding: "10px 12px" }}>Umbral</th>
               <th style={{ padding: "10px 12px" }}>Sueldo fijo</th>
               <th style={{ padding: "10px 12px" }}>Comisión activa</th>
-
               <th style={{ padding: "10px 12px" }}>Acciones</th>
             </tr>
           </thead>
@@ -64,9 +72,7 @@ export default async function ConductoresPage() {
                   {driver.fullName}
                 </td>
 
-                <td style={{ padding: "10px 12px" }}>
-                  {driver.phone ?? "-"}
-                </td>
+                <td style={{ padding: "10px 12px" }}>{driver.phone ?? "-"}</td>
 
                 <td style={{ padding: "10px 12px" }}>
                   {driver.defaultVehicle
@@ -89,16 +95,12 @@ export default async function ConductoresPage() {
                   </span>
                 </td>
 
-                {/* NUEVOS CAMPOS */}
-
                 <td style={{ padding: "10px 12px" }}>
                   {driver.commissionPercentage?.toFixed(0) ?? 0}%
                 </td>
 
                 <td style={{ padding: "10px 12px" }}>
-                  {driver.commissionMode === "monthly"
-                    ? "Mensual"
-                    : "Semanal"}
+                  {driver.commissionMode === "monthly" ? "Mensual" : "Semanal"}
                 </td>
 
                 <td style={{ padding: "10px 12px" }}>
@@ -125,8 +127,6 @@ export default async function ConductoresPage() {
                     {driver.commissionEnabled ? "ACTIVA" : "OFF"}
                   </span>
                 </td>
-
-                {/* ACCIONES */}
 
                 <td style={{ padding: "10px 12px" }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

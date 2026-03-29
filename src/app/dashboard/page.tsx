@@ -18,11 +18,11 @@ import { getFinancialDashboardData } from "@/lib/finance/dashboard";
 export const dynamic = "force-dynamic";
 
 type PageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     companyId?: string;
     from?: string;
     to?: string;
-  };
+  }>;
 };
 
 function formatCurrency(value: number) {
@@ -125,41 +125,40 @@ function getInsights(data: Awaited<ReturnType<typeof getFinancialDashboardData>>
   return insights;
 }
 
-export default async function DashboardPage({
-  searchParams,
-}: PageProps) {
-  const params = searchParams ?? {};
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const params = (await searchParams) ?? {};
 
-  let companyId = params.companyId;
+ let companyId = params.companyId;
 
-  if (!companyId) {
-    const firstCompany = await prisma.company.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: "asc" },
-      select: { id: true },
-    });
+let company = await prisma.company.findFirst({
+  where: {
+    isActive: true,
+    NOT: { id: "" },
+  },
+  orderBy: { createdAt: "asc" },
+});
 
-    if (!firstCompany) {
-      return (
-        <Container size="xl" py="md">
-          <Card withBorder>
-            <Title order={2}>Dashboard general</Title>
-            <Text c="dimmed" size="sm" mt="sm">
-              No hay ninguna empresa activa creada todavía.
-            </Text>
-          </Card>
-        </Container>
-      );
-    }
-
-    companyId = firstCompany.id;
-  }
-
-  const companies = await prisma.company.findMany({
-    where: { isActive: true },
-    select: { id: true, legalName: true, tradeName: true },
-    orderBy: { createdAt: "asc" },
+if (!company) {
+  company = await prisma.company.create({
+    data: {
+      legalName: "Transfer Vip Spain SL",
+      tradeName: "Transfer Vip Spain",
+      isActive: true,
+    },
   });
+}
+
+if (!companyId) {
+  companyId = company.id;
+}
+  const companies = await prisma.company.findMany({
+  where: {
+    isActive: true,
+    NOT: { id: "" },
+  },
+  select: { id: true, legalName: true, tradeName: true },
+  orderBy: { createdAt: "asc" },
+});
 
   const today = new Date();
   const from = parseDate(

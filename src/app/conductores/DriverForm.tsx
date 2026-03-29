@@ -14,37 +14,57 @@ export default function DriverForm({ companyId }: Props) {
   const [licensePoints, setLicensePoints] = useState("8");
   const [message, setMessage] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setMessage("Guardando...");
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
 
-    const res = await fetch("/api/drivers/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        companyId,
-        firstName,
-        lastName,
-        phone,
-        email,
-        licensePoints: Number(licensePoints || 0),
-      }),
-    });
+  const cleanFirstName = firstName.trim();
+  const cleanLastName = lastName.trim();
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      setMessage(data.error || "Error al crear conductor");
-      return;
-    }
-
-    setMessage("Conductor creado correctamente");
-    window.location.reload();
+  if (!companyId || !cleanFirstName || !cleanLastName) {
+    setMessage("Faltan campos obligatorios");
+    return;
   }
 
+  setMessage("Guardando...");
+
+  console.log("companyId", companyId);
+  console.log("payload", {
+    companyId,
+    firstName: cleanFirstName,
+    lastName: cleanLastName,
+    phone: phone.trim(),
+    email: email.trim(),
+    licensePoints: Number(licensePoints || 0),
+  });
+
+  const res = await fetch("/api/drivers/create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      companyId,
+      firstName: cleanFirstName,
+      lastName: cleanLastName,
+      phone: phone.trim(),
+      email: email.trim(),
+      licensePoints: Number(licensePoints || 0),
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    setMessage(data.error || "Error al crear conductor");
+    return;
+  }
+
+  setMessage("Conductor creado correctamente");
+  window.location.reload();
+}
+
   return (
+
     <form
       onSubmit={handleSubmit}
       style={{
@@ -57,6 +77,7 @@ export default function DriverForm({ companyId }: Props) {
         background: "#fafafa",
       }}
     >
+
       <h2>Nuevo conductor</h2>
 
       <div
