@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 
 type Props = {
   vehicleId: string;
@@ -22,12 +22,19 @@ export default function EditVehicleForm({
   const [message, setMessage] = useState("");
 
   async function handleSave() {
+    setMessage("Guardando...");
+
     const res = await fetch("/api/vehicles/update", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ vehicleId, brand, model, energyType }),
+      body: JSON.stringify({
+        vehicleId,
+        brand: brand.trim(),
+        model: model.trim(),
+        energyType,
+      }),
     });
 
     const data = await res.json();
@@ -70,125 +77,229 @@ export default function EditVehicleForm({
   return (
     <>
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
-        style={{
-          background: "#111",
-          color: "white",
-          border: "none",
-          padding: "6px 10px",
-          borderRadius: 6,
-          cursor: "pointer",
-        }}
+        style={editButtonStyle}
       >
         Editar
       </button>
 
       {isOpen && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.35)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              width: 420,
-              maxWidth: "90vw",
-              background: "white",
-              borderRadius: 12,
-              padding: 20,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
-              display: "grid",
-              gap: 12,
-            }}
-          >
-            <h3 style={{ margin: 0 }}>Editar vehículo</h3>
-
-            <div>
-              <label>Marca</label>
-              <input
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                style={{ width: "100%", padding: 8, marginTop: 4 }}
-              />
-            </div>
-
-            <div>
-              <label>Modelo</label>
-              <input
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                style={{ width: "100%", padding: 8, marginTop: 4 }}
-              />
-            </div>
-
-            <div>
-              <label>Energía</label>
-              <select
-                value={energyType}
-                onChange={(e) => setEnergyType(e.target.value)}
-                style={{ width: "100%", padding: 8, marginTop: 4 }}
-              >
-                <option value="electric">Eléctrico</option>
-                <option value="hybrid">Híbrido</option>
-                <option value="gasoline">Gasolina</option>
-                <option value="diesel">Diésel</option>
-              </select>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                onClick={handleSave}
-                style={{
-                  background: "#27ae60",
-                  color: "white",
-                  border: "none",
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                }}
-              >
-                Guardar
-              </button>
+        <div style={overlayStyle}>
+          <div style={modalStyle}>
+            <div style={headerStyle}>
+              <div>
+                <h3 style={{ margin: 0, marginBottom: 6 }}>Editar vehículo</h3>
+                <p style={{ margin: 0, fontSize: 14, color: "#6b7280" }}>
+                  Actualiza marca, modelo y tipo de energía.
+                </p>
+              </div>
 
               <button
+                type="button"
                 onClick={() => setIsOpen(false)}
-                style={{
-                  background: "#777",
-                  color: "white",
-                  border: "none",
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                }}
+                style={iconCloseButtonStyle}
               >
-                Cancelar
-              </button>
-
-              <button
-                onClick={handleDelete}
-                style={{
-                  background: "#c0392b",
-                  color: "white",
-                  border: "none",
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                }}
-              >
-                Eliminar vehículo
+                ×
               </button>
             </div>
 
-            {message && <p style={{ margin: 0 }}>{message}</p>}
+            <div style={{ display: "grid", gap: 14 }}>
+              <Field label="Marca">
+                <input
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  style={inputStyle}
+                />
+              </Field>
+
+              <Field label="Modelo">
+                <input
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  style={inputStyle}
+                />
+              </Field>
+
+              <Field label="Energía">
+                <select
+                  value={energyType}
+                  onChange={(e) => setEnergyType(e.target.value)}
+                  style={inputStyle}
+                >
+                  <option value="electric">Eléctrico</option>
+                  <option value="hybrid">Híbrido</option>
+                  <option value="gasoline">Gasolina</option>
+                  <option value="diesel">Diésel</option>
+                </select>
+              </Field>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                <button type="button" onClick={handleSave} style={saveButtonStyle}>
+                  Guardar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  style={secondaryButtonStyle}
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  style={dangerButtonStyle}
+                >
+                  Eliminar vehículo
+                </button>
+              </div>
+
+              {message && (
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: message.toLowerCase().includes("error")
+                      ? "#b91c1c"
+                      : "#2563eb",
+                  }}
+                >
+                  {message}
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
     </>
   );
 }
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label
+        style={{
+          display: "block",
+          fontSize: 14,
+          fontWeight: 600,
+          color: "#374151",
+          marginBottom: 6,
+        }}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const overlayStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(15, 23, 42, 0.45)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 16,
+  zIndex: 1000,
+};
+
+const modalStyle: React.CSSProperties = {
+  width: "100%",
+  maxWidth: 560,
+  maxHeight: "90vh",
+  overflowY: "auto",
+  background: "white",
+  borderRadius: 18,
+  padding: 20,
+  boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
+  border: "1px solid #e5e7eb",
+  boxSizing: "border-box",
+};
+
+const headerStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 12,
+  marginBottom: 18,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "1px solid #d1d5db",
+  fontSize: 14,
+  background: "#fff",
+  boxSizing: "border-box",
+};
+
+const editButtonStyle: React.CSSProperties = {
+  background: "#2563eb",
+  color: "white",
+  border: "none",
+  padding: "8px 12px",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontWeight: 600,
+  fontSize: 13,
+};
+
+const saveButtonStyle: React.CSSProperties = {
+  background: "#2563eb",
+  color: "white",
+  border: "none",
+  padding: "10px 14px",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontWeight: 600,
+};
+
+const secondaryButtonStyle: React.CSSProperties = {
+  background: "#e5e7eb",
+  color: "#111827",
+  border: "none",
+  padding: "10px 14px",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontWeight: 600,
+};
+
+const dangerButtonStyle: React.CSSProperties = {
+  background: "#dc2626",
+  color: "white",
+  border: "none",
+  padding: "10px 14px",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontWeight: 600,
+};
+
+const iconCloseButtonStyle: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 999,
+  border: "1px solid #d1d5db",
+  background: "white",
+  cursor: "pointer",
+  fontSize: 22,
+  lineHeight: 1,
+};

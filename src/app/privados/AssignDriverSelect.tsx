@@ -33,16 +33,21 @@ export default function AssignDriverSelect({ tripId, drivers }: Props) {
       defaultValue=""
       onChange={(e) => handleChange(e.target.value)}
       style={{
-        padding: "6px 10px",
-        borderRadius: 8,
+        width: "100%",
+        minHeight: 40,
+        padding: "9px 12px",
+        borderRadius: 10,
         border: "1px solid #d1d5db",
         fontSize: 13,
         background: "white",
         cursor: "pointer",
+        fontWeight: 600,
+        color: "#111827",
+        boxSizing: "border-box",
+        outline: "none",
       }}
     >
-      <option value="">Asignar</option>
-
+      <option value="">Asignar conductor</option>
       {drivers.map((driver) => (
         <option key={driver.id} value={driver.id}>
           {driver.fullName}

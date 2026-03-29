@@ -1,6 +1,11 @@
 "use client";
 
+import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
+import "dayjs/locale/es";
+
 import { MantineProvider, createTheme } from "@mantine/core";
+import { DatesProvider } from "@mantine/dates";
 
 const theme = createTheme({
   primaryColor: "blue",
@@ -42,5 +47,17 @@ export default function Providers({
 }: {
   children: React.ReactNode;
 }) {
-  return <MantineProvider theme={theme}>{children}</MantineProvider>;
+  return (
+    <MantineProvider theme={theme}>
+      <DatesProvider
+        settings={{
+          locale: "es",
+          firstDayOfWeek: 1,
+          weekendDays: [0, 6],
+        }}
+      >
+        {children}
+      </DatesProvider>
+    </MantineProvider>
+  );
 }

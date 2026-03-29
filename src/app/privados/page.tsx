@@ -37,13 +37,29 @@ function getStatusColor(status: string) {
   }
 }
 
+function getStatusLabel(status: string) {
+  switch (status) {
+    case "pending":
+      return "Pendiente";
+    case "assigned":
+      return "Asignado";
+    case "in_progress":
+      return "En curso";
+    case "completed":
+      return "Completado";
+    case "cancelled":
+      return "Cancelado";
+    default:
+      return status;
+  }
+}
+
 function getTimeStatus(serviceDate: Date, serviceTime?: string | null) {
   if (!serviceTime) return "no-time";
 
   const now = new Date();
   const datePart = new Date(serviceDate).toISOString().split("T")[0];
   const tripDateTime = new Date(`${datePart}T${serviceTime}:00`);
-
   const diffMinutes = (tripDateTime.getTime() - now.getTime()) / 60000;
 
   if (diffMinutes < -10) return "late";
@@ -153,9 +169,16 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
   const params = (await searchParams) ?? {};
   const view = params.view || "all";
 
-  const company = await prisma.company.findFirst();
+  const company = await prisma.company.findFirst({
+    where: {
+      isActive: true,
+      NOT: { id: "" },
+    },
+    orderBy: { createdAt: "asc" },
+  });
 
   const trips = await prisma.privateTrip.findMany({
+    where: company ? { companyId: company.id } : undefined,
     orderBy: [{ serviceDate: "desc" }, { serviceTime: "asc" }],
     take: 50,
     include: {
@@ -165,6 +188,7 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
   });
 
   const drivers = await prisma.driver.findMany({
+    where: company ? { companyId: company.id, isActive: true } : undefined,
     orderBy: { fullName: "asc" },
   });
 
@@ -270,28 +294,40 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
   return (
     <main
       style={{
-        padding: 32,
+        padding: 20,
         maxWidth: 1320,
         margin: "0 auto",
-        fontFamily: "Arial",
+        fontFamily: "Arial, sans-serif",
       }}
     >
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ marginBottom: 8 }}>Viajes privados</h1>
+        <h1 style={{ margin: 0, marginBottom: 8 }}>Viajes privados</h1>
         <p style={{ color: "#6b7280", margin: 0 }}>
-          Gestión de servicios privados.
+          Gestión de servicios privados, prioridades e incidencias.
         </p>
       </div>
 
-      {company ? (
+      {!company ? (
+        <div
+          style={{
+            border: "1px dashed #d1d5db",
+            borderRadius: 14,
+            padding: 20,
+            background: "#fafafa",
+            color: "#6b7280",
+          }}
+        >
+          No hay ninguna empresa activa creada todavía.
+        </div>
+      ) : (
         <NewPrivateTripModal>
           <PrivateTripForm companyId={company.id} />
         </NewPrivateTripModal>
-      ) : null}
+      )}
 
       <section style={{ marginTop: 24, marginBottom: 28 }}>
         <div style={{ marginBottom: 14 }}>
-          <h2 style={{ marginBottom: 6 }}>Resumen de hoy</h2>
+          <h2 style={{ margin: 0, marginBottom: 6 }}>Resumen de hoy</h2>
           <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
             Métricas rápidas de los servicios privados del día.
           </p>
@@ -313,7 +349,7 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
           />
           <IncidentCard
             title="Servicios hoy"
-            valueText={String(todayServices)}
+            value={todayServices}
             bg="#f0fdf4"
             border="#bbf7d0"
             color="#166534"
@@ -328,9 +364,9 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      <section style={{ marginTop: 32, marginBottom: 28 }}>
+      <section style={{ marginBottom: 28 }}>
         <div style={{ marginBottom: 14 }}>
-          <h2 style={{ marginBottom: 6 }}>Panel de incidencias</h2>
+          <h2 style={{ margin: 0, marginBottom: 6 }}>Panel de incidencias</h2>
           <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
             Prioriza primero los servicios urgentes y los que están sin asignar.
           </p>
@@ -374,7 +410,7 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
         </div>
       </section>
 
-      <section style={{ marginTop: 24 }}>
+      <section>
         <div
           style={{
             display: "flex",
@@ -391,22 +427,16 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
             Urgentes
           </FilterLink>
 
-          <FilterLink
-            href="/privados?view=no-driver"
-            active={view === "no-driver"}
-          >
+          <FilterLink href="/privados?view=no-driver" active={view === "no-driver"}>
             Sin conductor
           </FilterLink>
 
-          <FilterLink
-            href="/privados?view=completed"
-            active={view === "completed"}
-          >
+          <FilterLink href="/privados?view=completed" active={view === "completed"}>
             Completados
           </FilterLink>
         </div>
 
-        <h2 style={{ marginBottom: 16 }}>Últimos viajes</h2>
+        <h2 style={{ margin: 0, marginBottom: 16 }}>Últimos viajes</h2>
 
         {filteredTrips.length === 0 ? (
           <div
@@ -421,142 +451,320 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
             No hay viajes para este filtro.
           </div>
         ) : (
-          <div
-            style={{
-              overflowX: "auto",
-              border: "1px solid #e5e7eb",
-              borderRadius: 14,
-              background: "white",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
-            }}
-          >
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: 14,
-                minWidth: 1220,
-              }}
-            >
-              <thead>
-                <tr
+          <>
+            <style>{`
+              @media (max-width: 900px) {
+                .private-trips-desktop {
+                  display: none !important;
+                }
+                .private-trips-mobile {
+                  display: grid !important;
+                }
+              }
+
+              @media (min-width: 901px) {
+                .private-trips-desktop {
+                  display: block !important;
+                }
+                .private-trips-mobile {
+                  display: none !important;
+                }
+              }
+            `}</style>
+
+            <div className="private-trips-desktop" style={{ display: "block" }}>
+              <div
+                style={{
+                  overflowX: "auto",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 14,
+                  background: "white",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
+                }}
+              >
+                <table
                   style={{
-                    background: "#f8fafc",
-                    borderBottom: "1px solid #e5e7eb",
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 14,
+                    minWidth: 1220,
                   }}
                 >
-                  <th style={th}>Fecha</th>
-                  <th style={th}>Hora</th>
-                  <th style={th}>Ruta</th>
-                  <th style={th}>Importe</th>
-                  <th style={th}>Conductor</th>
-                  <th style={th}>Vehículo</th>
-                  <th style={th}>Estado</th>
-                  <th style={th}>Incidencia</th>
-                  <th style={th}>Asignar</th>
-                  <th style={th}>Acciones</th>
-                </tr>
-              </thead>
+                  <thead>
+                    <tr
+                      style={{
+                        background: "#f8fafc",
+                        borderBottom: "1px solid #e5e7eb",
+                      }}
+                    >
+                      <th style={th}>Fecha</th>
+                      <th style={th}>Hora</th>
+                      <th style={th}>Ruta</th>
+                      <th style={th}>Importe</th>
+                      <th style={th}>Conductor</th>
+                      <th style={th}>Vehículo</th>
+                      <th style={th}>Estado</th>
+                      <th style={th}>Incidencia</th>
+                      <th style={th}>Asignar</th>
+                      <th style={th}>Acciones</th>
+                    </tr>
+                  </thead>
 
-              <tbody>
+                  <tbody>
+                    {filteredTrips.map((trip) => {
+                      const timeStatus = getTimeStatus(
+                        trip.serviceDate,
+                        trip.serviceTime
+                      );
+                      const timeColor = getTimeColor(timeStatus);
+                      const hasDriver = Boolean(trip.driverId);
+
+                      const rowBackground =
+                        !hasDriver &&
+                        (timeStatus === "soon" || timeStatus === "late") &&
+                        trip.status !== "completed" &&
+                        trip.status !== "cancelled"
+                          ? "#fff1f2"
+                          : timeStatus === "late" &&
+                            trip.status !== "completed" &&
+                            trip.status !== "cancelled"
+                          ? "#fff7f7"
+                          : "transparent";
+
+                      return (
+                        <tr
+                          key={trip.id}
+                          style={{
+                            borderBottom: "1px solid #f1f5f9",
+                            background: rowBackground,
+                          }}
+                        >
+                          <td style={td}>{formatDate(trip.serviceDate)}</td>
+
+                          <td style={td}>
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                fontWeight: 700,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: "50%",
+                                  background: timeColor,
+                                  boxShadow: `0 0 6px ${timeColor}`,
+                                }}
+                              />
+                              {trip.serviceTime || "--:--"}
+                            </span>
+                          </td>
+
+                          <td style={td}>
+                            <div>
+                              {trip.origin || "-"}{" "}
+                              <span style={{ color: "#9ca3af" }}>→</span>{" "}
+                              {trip.destination || "-"}
+                            </div>
+
+                            {trip.stops && (
+                              <div style={{ fontSize: 12, color: "#6b7280" }}>
+                                Paradas: {trip.stops}
+                              </div>
+                            )}
+                          </td>
+
+                          <td style={{ ...td, fontWeight: 700 }}>
+                            {formatCurrency(trip.amount)}
+                          </td>
+
+                          <td style={td}>
+                            {trip.driver?.fullName ?? (
+                              <span style={{ color: "#9ca3af" }}>Sin asignar</span>
+                            )}
+                          </td>
+
+                          <td style={td}>
+                            {trip.vehicle?.plateNumber ?? (
+                              <span style={{ color: "#9ca3af" }}>Sin asignar</span>
+                            )}
+                          </td>
+
+                          <td style={td}>
+                            <span
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: 999,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "white",
+                                background: getStatusColor(trip.status),
+                              }}
+                            >
+                              {getStatusLabel(trip.status)}
+                            </span>
+                          </td>
+
+                          <td style={td}>
+                            <span
+                              style={getIncidentBadgeStyle({
+                                timeStatus,
+                                hasDriver,
+                                status: trip.status,
+                              })}
+                            >
+                              {getIncidentText({
+                                timeStatus,
+                                hasDriver,
+                                status: trip.status,
+                              })}
+                            </span>
+                          </td>
+
+                          <td style={td}>
+                            <AssignDriverSelect tripId={trip.id} drivers={drivers} />
+                          </td>
+
+                          <td style={td}>
+                            <TripActionsInline tripId={trip.id} status={trip.status} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="private-trips-mobile" style={{ display: "none" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: 12,
+                }}
+              >
                 {filteredTrips.map((trip) => {
-                  const timeStatus = getTimeStatus(
-                    trip.serviceDate,
-                    trip.serviceTime
-                  );
+                  const timeStatus = getTimeStatus(trip.serviceDate, trip.serviceTime);
                   const timeColor = getTimeColor(timeStatus);
                   const hasDriver = Boolean(trip.driverId);
 
-                  const rowBackground =
-                    !hasDriver &&
-                    (timeStatus === "soon" || timeStatus === "late") &&
-                    trip.status !== "completed" &&
-                    trip.status !== "cancelled"
-                      ? "#fff1f2"
-                      : timeStatus === "late" &&
-                        trip.status !== "completed" &&
-                        trip.status !== "cancelled"
-                      ? "#fff7f7"
-                      : "transparent";
-
                   return (
-                    <tr
+                    <div
                       key={trip.id}
                       style={{
-                        borderBottom: "1px solid #f1f5f9",
-                        background: rowBackground,
+                        border: "1px solid #e5e7eb",
+                        borderRadius: 16,
+                        background: "white",
+                        boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
+                        padding: 16,
+                        display: "grid",
+                        gap: 12,
                       }}
                     >
-                      <td style={td}>{formatDate(trip.serviceDate)}</td>
-
-                      <td style={td}>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 6,
-                            fontWeight: 700,
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: 10,
-                              height: 10,
-                              borderRadius: "50%",
-                              background: timeColor,
-                              boxShadow: `0 0 6px ${timeColor}`,
-                            }}
-                          />
-                          {trip.serviceTime || "--:--"}
-                        </span>
-                      </td>
-
-                      <td style={td}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "flex-start",
+                          gap: 12,
+                        }}
+                      >
                         <div>
-                          {trip.origin || "-"}{" "}
-                          <span style={{ color: "#9ca3af" }}>→</span>{" "}
-                          {trip.destination || "-"}
+                          <div
+                            style={{
+                              fontSize: 16,
+                              fontWeight: 700,
+                              color: "#111827",
+                              marginBottom: 4,
+                            }}
+                          >
+                            {formatDate(trip.serviceDate)} · {trip.serviceTime || "--:--"}
+                          </div>
+
+                          <div style={{ fontSize: 13, color: "#6b7280" }}>
+                            {trip.origin || "-"} → {trip.destination || "-"}
+                          </div>
                         </div>
 
-                        {trip.stops && (
-                          <div style={{ fontSize: 12, color: "#6b7280" }}>
-                            Paradas: {trip.stops}
-                          </div>
-                        )}
-                      </td>
-
-                      <td style={{ ...td, fontWeight: 600 }}>
-                        {formatCurrency(trip.amount)}
-                      </td>
-
-                      <td style={td}>
-                        {trip.driver?.fullName ?? (
-                          <span style={{ color: "#9ca3af" }}>Sin asignar</span>
-                        )}
-                      </td>
-
-                      <td style={td}>
-                        {trip.vehicle?.plateNumber ?? (
-                          <span style={{ color: "#9ca3af" }}>Sin asignar</span>
-                        )}
-                      </td>
-
-                      <td style={td}>
                         <span
                           style={{
-                            padding: "4px 10px",
+                            padding: "5px 10px",
                             borderRadius: 999,
-                            fontSize: 12,
-                            fontWeight: 600,
+                            fontSize: 11,
+                            fontWeight: 700,
                             color: "white",
                             background: getStatusColor(trip.status),
+                            whiteSpace: "nowrap",
                           }}
                         >
-                          {trip.status}
+                          {getStatusLabel(trip.status)}
                         </span>
-                      </td>
+                      </div>
 
-                      <td style={td}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: 10,
+                        }}
+                      >
+                        <InfoItem label="Importe" value={formatCurrency(trip.amount)} />
+                        <InfoItem
+                          label="Hora"
+                          value={
+                            trip.serviceTime ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: "50%",
+                                    background: timeColor,
+                                    boxShadow: `0 0 6px ${timeColor}`,
+                                  }}
+                                />
+                                {trip.serviceTime}
+                              </span>
+                            ) : (
+                              "--:--"
+                            )
+                          }
+                        />
+                        <InfoItem
+                          label="Conductor"
+                          value={trip.driver?.fullName ?? "Sin asignar"}
+                        />
+                        <InfoItem
+                          label="Vehículo"
+                          value={trip.vehicle?.plateNumber ?? "Sin asignar"}
+                        />
+                      </div>
+
+                      {trip.stops ? (
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: "#6b7280",
+                            background: "#f8fafc",
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 12,
+                            padding: "10px 12px",
+                          }}
+                        >
+                          <strong style={{ color: "#374151" }}>Paradas:</strong> {trip.stops}
+                        </div>
+                      ) : null}
+
+                      <div>
                         <span
                           style={getIncidentBadgeStyle({
                             timeStatus,
@@ -570,24 +778,18 @@ export default async function PrivadosPage({ searchParams }: PageProps) {
                             status: trip.status,
                           })}
                         </span>
-                      </td>
+                      </div>
 
-                      <td style={td}>
+                      <div style={{ display: "grid", gap: 8 }}>
                         <AssignDriverSelect tripId={trip.id} drivers={drivers} />
-                      </td>
-
-                      <td style={td}>
-                        <TripActionsInline
-                          tripId={trip.id}
-                          status={trip.status}
-                        />
-                      </td>
-                    </tr>
+                        <TripActionsInline tripId={trip.id} status={trip.status} />
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </div>
+          </>
         )}
       </section>
     </main>
@@ -618,6 +820,7 @@ function IncidentCard({
         border: `1px solid ${border}`,
         borderRadius: 14,
         padding: 16,
+        boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
       }}
     >
       <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 6 }}>
@@ -656,6 +859,32 @@ function FilterLink({
     >
       {children}
     </a>
+  );
+}
+
+function InfoItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        background: "#f8fafc",
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        padding: "10px 12px",
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+        {value}
+      </div>
+    </div>
   );
 }
 

@@ -11,7 +11,13 @@ import {
   DollarSign,
   FileBarChart,
   ReceiptText,
+  X,
 } from "lucide-react";
+
+type Props = {
+  mobileOpen?: boolean;
+  onCloseMobile?: () => void;
+};
 
 const links = [
   {
@@ -61,85 +67,123 @@ const links = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen = false, onCloseMobile }: Props) {
   const pathname = usePathname();
 
   return (
-    <aside
-      style={{
-        width: 270,
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
-        color: "white",
-        padding: 20,
-        boxSizing: "border-box",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div style={{ marginBottom: 24 }}>
-        <div
-          style={{
-            fontSize: 11,
-            color: "rgba(255,255,255,0.55)",
-            marginBottom: 8,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            fontWeight: 700,
-          }}
-        >
-          Plataforma VTC
-        </div>
-
-        <div
-          style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 16,
-            padding: 16,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
-          }}
-        >
+<aside
+  style={{
+    width: 270,
+    minWidth: 270,
+    minHeight: "100%",
+    height: "100vh",
+    background: "linear-gradient(180deg, #0f172a 0%, #111827 100%)",
+    color: "white",
+    padding: 20,
+    boxSizing: "border-box",
+    borderRight: "1px solid rgba(255,255,255,0.06)",
+    display: "flex",
+    flexDirection: "column",
+    overflowY: "auto",
+    WebkitOverflowScrolling: "touch",
+paddingBottom: 24,
+  }}
+>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ flex: 1 }}>
           <div
             style={{
-              width: 42,
-              height: 42,
-              borderRadius: 12,
-              background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+              fontSize: 11,
+              color: "rgba(255,255,255,0.55)",
+              marginBottom: 8,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              fontWeight: 700,
+            }}
+          >
+            Plataforma VTC
+          </div>
+
+          <div
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 16,
+              padding: 16,
+              boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+            }}
+          >
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: 16,
+                marginBottom: 12,
+                boxShadow: "0 8px 18px rgba(37,99,235,0.35)",
+              }}
+            >
+              TV
+            </div>
+
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 800,
+                lineHeight: 1.2,
+                marginBottom: 6,
+              }}
+            >
+              Transfer Vip Spain
+            </div>
+
+            <div
+              style={{
+                fontSize: 13,
+                color: "rgba(255,255,255,0.65)",
+                lineHeight: 1.4,
+              }}
+            >
+              Gestión integral de flota, servicios e informes.
+            </div>
+          </div>
+        </div>
+
+        {mobileOpen && onCloseMobile ? (
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            aria-label="Cerrar menú"
+            style={{
+              marginLeft: 12,
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.06)",
+              color: "white",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontWeight: 800,
-              fontSize: 16,
-              marginBottom: 12,
-              boxShadow: "0 8px 18px rgba(37,99,235,0.35)",
+              cursor: "pointer",
+              flexShrink: 0,
             }}
           >
-            TV
-          </div>
-
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 800,
-              lineHeight: 1.2,
-              marginBottom: 6,
-            }}
-          >
-            Transfer Vip Spain
-          </div>
-
-          <div
-            style={{
-              fontSize: 13,
-              color: "rgba(255,255,255,0.65)",
-              lineHeight: 1.4,
-            }}
-          >
-            Gestión integral de flota, servicios e informes.
-          </div>
-        </div>
+            <X size={18} />
+          </button>
+        ) : null}
       </div>
 
       <div
@@ -165,6 +209,7 @@ export default function Sidebar() {
             <Link
               key={link.href}
               href={link.href}
+              onClick={onCloseMobile}
               style={{
                 display: "flex",
                 alignItems: "center",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 
 type Props = {
   companyId: string;
@@ -16,6 +16,17 @@ export default function VehicleForm({ companyId }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    const cleanPlateNumber = plateNumber.trim().toUpperCase();
+    const cleanBrand = brand.trim();
+    const cleanModel = model.trim();
+
+    if (!companyId || !cleanPlateNumber) {
+      setMessage("Faltan campos obligatorios");
+      return;
+    }
+
+    setMessage("Guardando...");
+
     const res = await fetch("/api/vehicles/create", {
       method: "POST",
       headers: {
@@ -23,9 +34,9 @@ export default function VehicleForm({ companyId }: Props) {
       },
       body: JSON.stringify({
         companyId,
-        plateNumber,
-        brand,
-        model,
+        plateNumber: cleanPlateNumber,
+        brand: cleanBrand,
+        model: cleanModel,
         energyType,
       }),
     });
@@ -45,76 +56,105 @@ export default function VehicleForm({ companyId }: Props) {
     <form
       onSubmit={handleSubmit}
       style={{
-        border: "1px solid #ddd",
-        borderRadius: 10,
-        padding: 20,
-        marginBottom: 24,
         display: "grid",
-        gap: 12,
-        background: "#fafafa",
+        gap: 16,
       }}
     >
-      <h2>Nuevo vehículo</h2>
-
       <div>
-        <label>Matrícula</label>
+        <h2 style={{ margin: 0, marginBottom: 6 }}>Nuevo vehículo</h2>
+        <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+          Añade un vehículo a la empresa.
+        </p>
+      </div>
+
+      <Field label="Matrícula">
         <input
           value={plateNumber}
           onChange={(e) => setPlateNumber(e.target.value)}
           required
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
+          style={inputStyle}
         />
-      </div>
+      </Field>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
-          <label>Marca</label>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 12,
+        }}
+      >
+        <Field label="Marca">
           <input
             value={brand}
             onChange={(e) => setBrand(e.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
+            style={inputStyle}
           />
-        </div>
+        </Field>
 
-        <div>
-          <label>Modelo</label>
+        <Field label="Modelo">
           <input
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            style={{ width: "100%", padding: 8, marginTop: 4 }}
+            style={inputStyle}
           />
-        </div>
+        </Field>
       </div>
 
-      <div>
-        <label>Tipo de energía</label>
+      <Field label="Tipo de energía">
         <select
           value={energyType}
           onChange={(e) => setEnergyType(e.target.value)}
-          style={{ width: "100%", padding: 8, marginTop: 4 }}
+          style={inputStyle}
         >
           <option value="electric">Eléctrico</option>
           <option value="hybrid">Híbrido</option>
           <option value="gasoline">Gasolina</option>
           <option value="diesel">Diésel</option>
         </select>
-      </div>
+      </Field>
 
-      <button
-        type="submit"
-        style={{
-          background: "#111",
-          color: "white",
-          border: "none",
-          borderRadius: 8,
-          padding: "10px 14px",
-          cursor: "pointer",
-        }}
-      >
+      <button type="submit" style={primaryButtonStyle}>
         Crear vehículo
       </button>
 
-      {message && <p>{message}</p>}
+      {message && <p style={{ margin: 0 }}>{message}</p>}
     </form>
   );
 }
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <label style={{ fontSize: 14, fontWeight: 600, color: "#374151" }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "1px solid #d1d5db",
+  fontSize: 14,
+  background: "#fff",
+  boxSizing: "border-box",
+};
+
+const primaryButtonStyle: React.CSSProperties = {
+  background: "#2563eb",
+  color: "white",
+  border: "none",
+  padding: "10px 14px",
+  borderRadius: 10,
+  cursor: "pointer",
+  fontWeight: 600,
+};

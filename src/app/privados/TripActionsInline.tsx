@@ -22,21 +22,40 @@ export default function TripActionsInline({ tripId, status }: Props) {
   }
 
   return (
-    <div style={{ display: "flex", gap: 6 }}>
+    <div
+      style={{
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap",
+        width: "100%",
+      }}
+    >
       {status === "assigned" && (
-        <button style={btnBlue} onClick={() => updateStatus("in_progress")}>
+        <button
+          type="button"
+          style={btnBlue}
+          onClick={() => updateStatus("in_progress")}
+        >
           Iniciar
         </button>
       )}
 
       {status === "in_progress" && (
-        <button style={btnGreen} onClick={() => updateStatus("completed")}>
+        <button
+          type="button"
+          style={btnGreen}
+          onClick={() => updateStatus("completed")}
+        >
           Completar
         </button>
       )}
 
       {status !== "completed" && status !== "cancelled" && (
-        <button style={btnRed} onClick={() => updateStatus("cancelled")}>
+        <button
+          type="button"
+          style={btnRed}
+          onClick={() => updateStatus("cancelled")}
+        >
           Cancelar
         </button>
       )}
@@ -44,26 +63,30 @@ export default function TripActionsInline({ tripId, status }: Props) {
   );
 }
 
-const baseBtn = {
+const baseBtn: React.CSSProperties = {
   border: "none",
-  borderRadius: 6,
-  padding: "4px 8px",
+  borderRadius: 10,
+  padding: "9px 12px",
+  minHeight: 40,
   fontSize: 12,
   cursor: "pointer",
   color: "white",
+  fontWeight: 700,
+  lineHeight: 1.2,
+  whiteSpace: "nowrap",
 };
 
-const btnBlue = {
+const btnBlue: React.CSSProperties = {
   ...baseBtn,
   background: "#2563eb",
 };
 
-const btnGreen = {
+const btnGreen: React.CSSProperties = {
   ...baseBtn,
   background: "#16a34a",
 };
 
-const btnRed = {
+const btnRed: React.CSSProperties = {
   ...baseBtn,
   background: "#dc2626",
 };
