@@ -22,11 +22,10 @@ type Props = {
   vehicles: Vehicle[];
 };
 
-function getWeekdayLabelFromDate(date: unknown) {
+function getWeekdayLabelFromDate(date: string | null) {
   if (!date) return "";
 
-  const parsed =
-    date instanceof Date ? date : new Date(date as string);
+  const parsed = new Date(date);
 
   if (Number.isNaN(parsed.getTime())) return "";
 
@@ -43,11 +42,10 @@ function getWeekdayLabelFromDate(date: unknown) {
   return weekdays[parsed.getDay()];
 }
 
-function formatDateForApi(date: unknown) {
+function formatDateForApi(date: string | null) {
   if (!date) return "";
 
-  const parsed =
-    date instanceof Date ? date : new Date(date as string);
+  const parsed = new Date(date);
 
   if (Number.isNaN(parsed.getTime())) return "";
 
@@ -65,7 +63,7 @@ export default function DailyOperationForm({
 }: Props) {
   const [driverId, setDriverId] = useState(drivers[0]?.id ?? "");
   const [vehicleId, setVehicleId] = useState(vehicles[0]?.id ?? "");
-  const [operationDate, setOperationDate] = useState<Date | null>(null);
+  const [operationDate, setOperationDate] = useState<string | null>(null);
   const weekdayLabel = getWeekdayLabelFromDate(operationDate);
   const [bolt, setBolt] = useState("0");
   const [uber, setUber] = useState("0");
