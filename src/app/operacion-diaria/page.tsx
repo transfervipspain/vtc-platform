@@ -38,8 +38,43 @@ export default async function OperacionDiariaPage({
 
   if (!company) {
     return (
-      <main style={{ padding: 24, fontFamily: "Arial, sans-serif" }}>
-        <h1>Operación diaria</h1>
+      <main
+  style={{
+    padding: 20,
+    maxWidth: 1200,
+    margin: "0 auto",
+    fontFamily: "Arial, sans-serif",
+  }}
+>
+  <div
+    style={{
+      marginBottom: 24,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: 12,
+      flexWrap: "wrap",
+    }}
+  >
+    <div>
+      <h1 style={{ margin: 0, marginBottom: 6 }}>
+        Operación diaria
+      </h1>
+      <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+        Control de ingresos, kilómetros y costes por conductor.
+      </p>
+    </div>
+
+    {company ? (
+      <NewDailyOperationModal>
+        <DailyOperationForm
+          companyId={company.id}
+          drivers={drivers}
+          vehicles={vehicles}
+        />
+      </NewDailyOperationModal>
+    ) : null}
+  </div>
         <p>No hay empresa cargada.</p>
       </main>
     );
@@ -270,7 +305,7 @@ export default async function OperacionDiariaPage({
           />
         </div>
 
-        {operations.length === 0 ? (
+             {operations.length === 0 ? (
           <div
             style={{
               border: "1px dashed #d1d5db",
@@ -283,105 +318,267 @@ export default async function OperacionDiariaPage({
             No hay registros con esos filtros.
           </div>
         ) : (
-          <div
-            style={{
-              overflowX: "auto",
-              border: "1px solid #e5e7eb",
-              borderRadius: 14,
-              background: "#fff",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
-            }}
-          >
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: 14,
-                minWidth: 1100,
-              }}
-            >
-              <thead>
-                <tr
+          <>
+            <style>{`
+              .daily-ops-desktop {
+                display: block;
+              }
+
+              .daily-ops-mobile {
+                display: none;
+              }
+
+              @media (max-width: 900px) {
+                .daily-ops-desktop {
+                  display: none !important;
+                }
+
+                .daily-ops-mobile {
+                  display: flex !important;
+                  flex-direction: column;
+                  gap: 12px;
+                }
+              }
+            `}</style>
+
+            <div className="daily-ops-desktop">
+              <div
+                style={{
+                  overflowX: "auto",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 14,
+                  background: "#fff",
+                  boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
+                }}
+              >
+                <table
                   style={{
-                    background: "#f8fafc",
-                    textAlign: "left",
-                    borderBottom: "1px solid #e5e7eb",
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: 14,
+                    minWidth: 1100,
                   }}
                 >
-                  <th style={thStyle}>Fecha</th>
-                  <th style={thStyle}>Conductor</th>
-                  <th style={thStyle}>Vehículo</th>
-                  <th style={thStyle}>Bolt</th>
-                  <th style={thStyle}>Uber</th>
-                  <th style={thStyle}>Cabify</th>
-                  <th style={thStyle}>Privado</th>
-                  <th style={thStyle}>Total</th>
-                  <th style={thStyle}>Km</th>
-                  <th style={thStyle}>Energía</th>
-                  <th style={thStyle}>Notas</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {operations.map((op) => {
-                  const bolt =
-                    op.platformIncomes.find((p) => p.platform.code === "BOLT")
-                      ?.grossAmount ?? 0;
-
-                  const uber =
-                    op.platformIncomes.find((p) => p.platform.code === "UBER")
-                      ?.grossAmount ?? 0;
-
-                  const cabify =
-                    op.platformIncomes.find((p) => p.platform.code === "CABIFY")
-                      ?.grossAmount ?? 0;
-
-                  const privado = op.privateIncomeSummary?.grossAmount ?? 0;
-                  const total = bolt + uber + cabify + privado;
-
-                  const energy =
-                    op.vehicleEnergyLog?.electricCost ??
-                    op.vehicleEnergyLog?.fuelCost ??
-                    0;
-
-                  const kilometers = op.vehicleEnergyLog?.kilometers ?? 0;
-
-                  return (
+                  <thead>
                     <tr
-                      key={op.id}
                       style={{
-                        borderBottom: "1px solid #f1f5f9",
+                        background: "#f8fafc",
+                        textAlign: "left",
+                        borderBottom: "1px solid #e5e7eb",
                       }}
                     >
-                      <td style={tdStyle}>{formatDate(op.operationDate)}</td>
-                      <td style={tdStyle}>
-                        <span style={{ fontWeight: 600 }}>
-                          {op.driver.fullName}
-                        </span>
-                      </td>
-                      <td style={tdStyle}>{op.vehicle.plateNumber}</td>
-                      <td style={tdStyle}>{formatCurrency(bolt)}</td>
-                      <td style={tdStyle}>{formatCurrency(uber)}</td>
-                      <td style={tdStyle}>{formatCurrency(cabify)}</td>
-                      <td style={tdStyle}>{formatCurrency(privado)}</td>
-                      <td style={{ ...tdStyle, fontWeight: 700, color: "#1d4ed8" }}>
-                        {formatCurrency(total)}
-                      </td>
-                      <td style={tdStyle}>{kilometers}</td>
-                      <td style={tdStyle}>{formatCurrency(energy)}</td>
-                      <td style={tdStyle}>{op.notes?.trim() || "-"}</td>
+                      <th style={thStyle}>Fecha</th>
+                      <th style={thStyle}>Conductor</th>
+                      <th style={thStyle}>Vehículo</th>
+                      <th style={thStyle}>Bolt</th>
+                      <th style={thStyle}>Uber</th>
+                      <th style={thStyle}>Cabify</th>
+                      <th style={thStyle}>Privado</th>
+                      <th style={thStyle}>Total</th>
+                      <th style={thStyle}>Km</th>
+                      <th style={thStyle}>Energía</th>
+                      <th style={thStyle}>Notas</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+
+                  <tbody>
+                    {operations.map((op) => {
+                      const bolt =
+                        op.platformIncomes.find((p) => p.platform.code === "BOLT")
+                          ?.grossAmount ?? 0;
+
+                      const uber =
+                        op.platformIncomes.find((p) => p.platform.code === "UBER")
+                          ?.grossAmount ?? 0;
+
+                      const cabify =
+                        op.platformIncomes.find((p) => p.platform.code === "CABIFY")
+                          ?.grossAmount ?? 0;
+
+                      const privado = op.privateIncomeSummary?.grossAmount ?? 0;
+                      const total = bolt + uber + cabify + privado;
+
+                      const energy =
+                        op.vehicleEnergyLog?.electricCost ??
+                        op.vehicleEnergyLog?.fuelCost ??
+                        0;
+
+                      const kilometers = op.vehicleEnergyLog?.kilometers ?? 0;
+
+                      return (
+                        <tr
+                          key={op.id}
+                          style={{
+                            borderBottom: "1px solid #f1f5f9",
+                          }}
+                        >
+                          <td style={tdStyle}>{formatDate(op.operationDate)}</td>
+                          <td style={tdStyle}>
+                            <span style={{ fontWeight: 600 }}>
+                              {op.driver.fullName}
+                            </span>
+                          </td>
+                          <td style={tdStyle}>{op.vehicle.plateNumber}</td>
+                          <td style={tdStyle}>{formatCurrency(bolt)}</td>
+                          <td style={tdStyle}>{formatCurrency(uber)}</td>
+                          <td style={tdStyle}>{formatCurrency(cabify)}</td>
+                          <td style={tdStyle}>{formatCurrency(privado)}</td>
+                          <td style={{ ...tdStyle, fontWeight: 700 }}>
+                            {formatCurrency(total)}
+                          </td>
+                          <td style={tdStyle}>{kilometers}</td>
+                          <td style={tdStyle}>{formatCurrency(energy)}</td>
+                          <td style={tdStyle}>{op.notes?.trim() || "-"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="daily-ops-mobile">
+              {operations.map((op) => {
+                const bolt =
+                  op.platformIncomes.find((p) => p.platform.code === "BOLT")
+                    ?.grossAmount ?? 0;
+
+                const uber =
+                  op.platformIncomes.find((p) => p.platform.code === "UBER")
+                    ?.grossAmount ?? 0;
+
+                const cabify =
+                  op.platformIncomes.find((p) => p.platform.code === "CABIFY")
+                    ?.grossAmount ?? 0;
+
+                const privado = op.privateIncomeSummary?.grossAmount ?? 0;
+                const total = bolt + uber + cabify + privado;
+
+                const energy =
+                  op.vehicleEnergyLog?.electricCost ??
+                  op.vehicleEnergyLog?.fuelCost ??
+                  0;
+
+                const kilometers = op.vehicleEnergyLog?.kilometers ?? 0;
+
+                return (
+                  <div
+                    key={op.id}
+                    style={{
+                      border: "1px solid #e5e7eb",
+                      borderRadius: 16,
+                      background: "white",
+                      boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
+                      padding: 16,
+                      display: "grid",
+                      gap: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: 12,
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 700,
+                            color: "#111827",
+                            marginBottom: 4,
+                          }}
+                        >
+                          {op.driver.fullName}
+                        </div>
+
+                        <div style={{ fontSize: 13, color: "#6b7280" }}>
+                          {formatDate(op.operationDate)} · {op.vehicle.plateNumber}
+                        </div>
+                      </div>
+
+                      <span
+                        style={{
+                          padding: "5px 10px",
+                          borderRadius: 999,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#1d4ed8",
+                          background: "#dbeafe",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {formatCurrency(total)}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                      }}
+                    >
+                      <InfoItem label="Bolt" value={formatCurrency(bolt)} />
+                      <InfoItem label="Uber" value={formatCurrency(uber)} />
+                      <InfoItem label="Cabify" value={formatCurrency(cabify)} />
+                      <InfoItem label="Privado" value={formatCurrency(privado)} />
+                      <InfoItem label="Km" value={String(kilometers)} />
+                      <InfoItem label="Energía" value={formatCurrency(energy)} />
+                    </div>
+
+                    {op.notes?.trim() ? (
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "#6b7280",
+                          background: "#f8fafc",
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 12,
+                          padding: "10px 12px",
+                        }}
+                      >
+                        <strong style={{ color: "#374151" }}>Notas:</strong>{" "}
+                        {op.notes.trim()}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </section>
     </main>
   );
 }
-
+function InfoItem({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "#f8fafc",
+        border: "1px solid #e5e7eb",
+        borderRadius: 12,
+        padding: "10px 12px",
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 4 }}>
+        {label}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+        {value}
+      </div>
+    </div>
+  );
+}
 function Kpi({
   title,
   value,

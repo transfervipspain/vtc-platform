@@ -22,11 +22,15 @@ export default function NewDailyOperationModal({ children }: Props) {
       </div>
 
       {open ? (
-        <div style={overlayStyle} onClick={() => setOpen(false)}>
-          <div
-            style={modalStyle}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div
+          style={overlayStyle}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setOpen(false);
+            }
+          }}
+        >
+          <div style={modalShellStyle}>
             <div style={headerStyle}>
               <div>
                 <h2 style={{ margin: 0, marginBottom: 4 }}>Nueva operación diaria</h2>
@@ -45,7 +49,7 @@ export default function NewDailyOperationModal({ children }: Props) {
               </button>
             </div>
 
-            <div style={contentStyle}>{children}</div>
+            <div style={bodyScrollStyle}>{children}</div>
           </div>
         </div>
       ) : null}
@@ -54,13 +58,13 @@ export default function NewDailyOperationModal({ children }: Props) {
 }
 
 const openButtonStyle: React.CSSProperties = {
-  background: "#111827",
+  background: "#2563eb",
   color: "white",
   border: "none",
-  borderRadius: 10,
+  borderRadius: 12,
   padding: "10px 16px",
   cursor: "pointer",
-  fontWeight: 600,
+  fontWeight: 700,
   fontSize: 14,
 };
 
@@ -75,15 +79,17 @@ const overlayStyle: React.CSSProperties = {
   zIndex: 1000,
 };
 
-const modalStyle: React.CSSProperties = {
+const modalShellStyle: React.CSSProperties = {
   width: "100%",
   maxWidth: 1100,
   maxHeight: "90vh",
-  overflowY: "auto",
   background: "white",
   borderRadius: 18,
   boxShadow: "0 20px 50px rgba(0,0,0,0.18)",
   border: "1px solid #e5e7eb",
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
 };
 
 const headerStyle: React.CSSProperties = {
@@ -93,10 +99,14 @@ const headerStyle: React.CSSProperties = {
   gap: 16,
   padding: 20,
   borderBottom: "1px solid #e5e7eb",
-  position: "sticky",
-  top: 0,
   background: "white",
-  zIndex: 1,
+  flexShrink: 0,
+};
+
+const bodyScrollStyle: React.CSSProperties = {
+  padding: 20,
+  overflowY: "auto",
+  WebkitOverflowScrolling: "touch",
 };
 
 const closeButtonStyle: React.CSSProperties = {
@@ -108,8 +118,5 @@ const closeButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   fontSize: 22,
   lineHeight: 1,
-};
-
-const contentStyle: React.CSSProperties = {
-  padding: 20,
+  flexShrink: 0,
 };
