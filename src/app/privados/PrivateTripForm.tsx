@@ -23,15 +23,12 @@ export default function PrivateTripForm({ companyId }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!serviceDate) {
+if (!serviceDate) {
   setMessage("Debes seleccionar una fecha");
   return;
 }
 
-const normalizedDate =
-  serviceDate instanceof Date
-    ? serviceDate
-    : new Date(serviceDate as string);
+const normalizedDate = new Date(serviceDate);
 
 if (Number.isNaN(normalizedDate.getTime())) {
   setMessage("La fecha no es válida");
@@ -48,17 +45,17 @@ const res = await fetch("/api/private-trips", {
   body: JSON.stringify({
     companyId,
     serviceDate: normalizedDate.toISOString().split("T")[0],
-        serviceTime,
-        amount: Number(amount),
-        origin: origin.trim(),
-        stops: stops.trim(),
-        destination: destination.trim(),
-        intermediary: intermediary.trim(),
-        communicator: communicator.trim(),
-        notes: notes.trim(),
-        status,
-      }),
-    });
+    serviceTime,
+    amount: Number(amount),
+    origin: origin.trim(),
+    stops: stops.trim(),
+    destination: destination.trim(),
+    intermediary: intermediary.trim(),
+    communicator: communicator.trim(),
+    notes: notes.trim(),
+    status,
+  }),
+});
 
     const data = await res.json();
 
