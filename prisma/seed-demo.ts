@@ -9,7 +9,7 @@ function randInt(min: number, max: number) {
   return Math.floor(rand(min, max + 1));
 }
 
-function pickOne<T>(items: T[]): T {
+function pickOne<T>(items: readonly T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
