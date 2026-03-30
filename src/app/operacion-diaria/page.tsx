@@ -25,16 +25,7 @@ export default async function OperacionDiariaPage({
 }: PageProps) {
   const filters = (await searchParams) ?? {};
 
-  const company = await prisma.company.findFirst({
-    include: {
-      drivers: {
-        orderBy: { fullName: "asc" },
-      },
-      vehicles: {
-        orderBy: { plateNumber: "asc" },
-      },
-    },
-  });
+  
 
   if (!company) {
     return (
