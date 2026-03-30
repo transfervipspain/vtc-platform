@@ -1,8 +1,8 @@
-export const dynamic = "force-dynamic";
-
 import { prisma } from "@/lib/prisma";
 import DailyOperationForm from "./DailyOperationForm";
 import NewDailyOperationModal from "./NewDailyOperationModal";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   searchParams?: Promise<{
@@ -25,47 +25,32 @@ export default async function OperacionDiariaPage({
 }: PageProps) {
   const filters = (await searchParams) ?? {};
 
-  
+  const company = await prisma.company.findFirst({
+    where: {
+      isActive: true,
+      NOT: { id: "" },
+    },
+    include: {
+      drivers: {
+        where: { isActive: true },
+        orderBy: { fullName: "asc" },
+      },
+      vehicles: {
+        where: { isActive: true },
+        orderBy: { plateNumber: "asc" },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const drivers = company?.drivers ?? [];
+  const vehicles = company?.vehicles ?? [];
+  const companyId = company?.id ?? null;
 
   if (!company) {
     return (
-      <main
-  style={{
-    padding: 20,
-    maxWidth: 1200,
-    margin: "0 auto",
-    fontFamily: "Arial, sans-serif",
-  }}
->
-  <div
-    style={{
-      marginBottom: 24,
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      gap: 12,
-      flexWrap: "wrap",
-    }}
-  >
-    <div>
-      <h1 style={{ margin: 0, marginBottom: 6 }}>
-        Operación diaria
-      </h1>
-      <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
-        Control de ingresos, kilómetros y costes por conductor.
-      </p>
-    </div>
-
-    {companyId ? (
-  <NewDailyOperationModal>
-    <DailyOperationForm
-      companyId={companyId}
-      drivers={drivers}
-      vehicles={vehicles}
-    />
-  </NewDailyOperationModal>
-) : null}
-  </div>
+      <main style={{ padding: 40, fontFamily: "Arial, sans-serif" }}>
+        <h1>Operación diaria</h1>
         <p>No hay empresa cargada.</p>
       </main>
     );
@@ -136,7 +121,6 @@ export default async function OperacionDiariaPage({
           ?.grossAmount ?? 0;
 
       const privado = op.privateIncomeSummary?.grossAmount ?? 0;
-
       const total = bolt + uber + cabify + privado;
 
       const energy =
@@ -160,52 +144,45 @@ export default async function OperacionDiariaPage({
   );
 
   const avg = operations.length > 0 ? totals.income / operations.length : 0;
-const company = await prisma.company.findFirst({
-  where: {
-    isActive: true,
-    NOT: { id: "" },
-  },
-  include: {
-    drivers: {
-      where: { isActive: true },
-      orderBy: { fullName: "asc" },
-    },
-    vehicles: {
-      where: { isActive: true },
-      orderBy: { plateNumber: "asc" },
-    },
-  },
-  orderBy: { createdAt: "asc" },
-});
 
-const drivers = company?.drivers ?? [];
-const vehicles = company?.vehicles ?? [];
-const companyId = company?.id ?? null;
   return (
     <main
       style={{
-        padding: 24,
-        maxWidth: 1320,
+        padding: 20,
+        maxWidth: 1200,
         margin: "0 auto",
         fontFamily: "Arial, sans-serif",
       }}
     >
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, marginBottom: 8 }}>Operación diaria</h1>
-        <p style={{ color: "#6b7280", margin: 0 }}>
-          Registro diario por conductor y vehículo.
-        </p>
+      <div
+        style={{
+          marginBottom: 24,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0, marginBottom: 6 }}>Operación diaria</h1>
+          <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
+            Control de ingresos, kilómetros y costes por conductor.
+          </p>
+        </div>
+
+        {companyId ? (
+          <NewDailyOperationModal>
+            <DailyOperationForm
+              companyId={companyId}
+              drivers={drivers}
+              vehicles={vehicles}
+            />
+          </NewDailyOperationModal>
+        ) : null}
       </div>
 
-      <NewDailyOperationModal>
-        <DailyOperationForm
-          companyId={company.id}
-          drivers={company.drivers}
-          vehicles={company.vehicles}
-        />
-      </NewDailyOperationModal>
-
-      <section style={{ marginTop: 32 }}>
+      <section style={{ marginTop: 24 }}>
         <div style={{ marginBottom: 16 }}>
           <h2 style={{ margin: 0, marginBottom: 6 }}>Últimos registros</h2>
           <p style={{ margin: 0, color: "#6b7280", fontSize: 14 }}>
@@ -217,7 +194,7 @@ const companyId = company?.id ?? null;
           style={{
             marginBottom: 20,
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
             gap: 12,
             alignItems: "end",
             background: "#ffffff",
@@ -235,7 +212,7 @@ const companyId = company?.id ?? null;
               style={inputStyle}
             >
               <option value="">Todos</option>
-              {company.drivers.map((driver) => (
+              {drivers.map((driver) => (
                 <option key={driver.id} value={driver.id}>
                   {driver.fullName}
                 </option>
@@ -251,7 +228,7 @@ const companyId = company?.id ?? null;
               style={inputStyle}
             >
               <option value="">Todos</option>
-              {company.vehicles.map((vehicle) => (
+              {vehicles.map((vehicle) => (
                 <option key={vehicle.id} value={vehicle.id}>
                   {vehicle.plateNumber}
                 </option>
@@ -281,7 +258,7 @@ const companyId = company?.id ?? null;
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
             gap: 12,
             marginBottom: 20,
           }}
@@ -316,7 +293,7 @@ const companyId = company?.id ?? null;
           />
         </div>
 
-             {operations.length === 0 ? (
+        {operations.length === 0 ? (
           <div
             style={{
               border: "1px dashed #d1d5db",
@@ -565,6 +542,47 @@ const companyId = company?.id ?? null;
     </main>
   );
 }
+
+function Kpi({
+  title,
+  value,
+  color,
+  background,
+  borderColor,
+}: {
+  title: string;
+  value: string;
+  color: string;
+  background: string;
+  borderColor: string;
+}) {
+  return (
+    <div
+      style={{
+        background,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 14,
+        padding: 16,
+        boxShadow: "0 2px 8px rgba(15,23,42,0.04)",
+      }}
+    >
+      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 6 }}>
+        {title}
+      </div>
+
+      <div
+        style={{
+          fontSize: 26,
+          fontWeight: 800,
+          color,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function InfoItem({
   label,
   value,
@@ -590,44 +608,6 @@ function InfoItem({
     </div>
   );
 }
-function Kpi({
-  title,
-  value,
-  color,
-  background,
-  borderColor,
-}: {
-  title: string;
-  value: string;
-  color: string;
-  background: string;
-  borderColor: string;
-}) {
-  return (
-    <div
-      style={{
-        background,
-        border: `1px solid ${borderColor}`,
-        borderRadius: 14,
-        padding: 16,
-        boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
-      }}
-    >
-      <div style={{ fontSize: 13, color: "#6b7280" }}>{title}</div>
-
-      <div
-        style={{
-          fontSize: 22,
-          fontWeight: 700,
-          color,
-          marginTop: 4,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
 
 const labelStyle: React.CSSProperties = {
   display: "block",
@@ -639,6 +619,7 @@ const labelStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
+  minHeight: 42,
   padding: "10px 12px",
   borderRadius: 10,
   border: "1px solid #d1d5db",
