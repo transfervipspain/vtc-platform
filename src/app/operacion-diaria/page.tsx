@@ -65,15 +65,15 @@ export default async function OperacionDiariaPage({
       </p>
     </div>
 
-    {company ? (
-      <NewDailyOperationModal>
-        <DailyOperationForm
-          companyId={company.id}
-          drivers={drivers}
-          vehicles={vehicles}
-        />
-      </NewDailyOperationModal>
-    ) : null}
+    {companyId ? (
+  <NewDailyOperationModal>
+    <DailyOperationForm
+      companyId={companyId}
+      drivers={drivers}
+      vehicles={vehicles}
+    />
+  </NewDailyOperationModal>
+) : null}
   </div>
         <p>No hay empresa cargada.</p>
       </main>
@@ -169,7 +169,27 @@ export default async function OperacionDiariaPage({
   );
 
   const avg = operations.length > 0 ? totals.income / operations.length : 0;
+const company = await prisma.company.findFirst({
+  where: {
+    isActive: true,
+    NOT: { id: "" },
+  },
+  include: {
+    drivers: {
+      where: { isActive: true },
+      orderBy: { fullName: "asc" },
+    },
+    vehicles: {
+      where: { isActive: true },
+      orderBy: { plateNumber: "asc" },
+    },
+  },
+  orderBy: { createdAt: "asc" },
+});
 
+const drivers = company?.drivers ?? [];
+const vehicles = company?.vehicles ?? [];
+const companyId = company?.id ?? null;
   return (
     <main
       style={{
